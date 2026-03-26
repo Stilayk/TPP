@@ -1,0 +1,322 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f6f7fb;
+  color: #1f2937;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 16px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: #0f172a;
+  color: white;
+}
+
+.brand {
+  font-weight: 700;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.me-text {
+  font-size: 0.95rem;
+  opacity: 0.95;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 12px;
+}
+
+.tab-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 10px 12px;
+  cursor: pointer;
+  color: #334155;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.tab-btn.active {
+  background: white;
+  border-color: #e5e7eb;
+  border-bottom-color: white;
+  color: #0f172a;
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.section {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  margin: 12px 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 240px;
+}
+
+.field.inline {
+  min-width: 180px;
+}
+
+.checkbox {
+  min-width: 260px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+label {
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+select,
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: white;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 64px;
+}
+
+.btn {
+  border: 1px solid #cbd5e1;
+  background: white;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.btn:hover {
+  background: #f8fafc;
+}
+
+.btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: white;
+}
+
+.btn.danger {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: white;
+}
+
+.actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  border: 1px solid #e5e7eb;
+  padding: 10px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table th {
+  background: #f8fafc;
+  font-weight: 700;
+}
+
+.col-employee {
+  min-width: 260px;
+}
+
+.muted {
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.msg {
+  border-radius: 10px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  margin-top: 12px;
+}
+
+.msg.info {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.msg.error {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.msg.success {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+
+.reports-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.report-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+  padding: 14px;
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+
+.status-pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e5e7eb;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.report-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.excel-link {
+  display: inline-block;
+  margin-top: 10px;
+  font-weight: 700;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.excel-link:hover {
+  text-decoration: underline;
+}
+
+.entries-table th,
+.entries-table td {
+  border: 1px solid #e5e7eb;
+  padding: 8px;
+}
+
+.entries-table textarea {
+  min-height: 46px;
+}
+
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 70px);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+}
+
+.auth-card .field {
+  margin-bottom: 12px;
+}
+
+.admin-only {
+  /* управляется JS */
+}
+

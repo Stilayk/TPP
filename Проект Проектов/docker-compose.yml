@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      PORT: 8000
+      DATABASE_PATH: /data/app.sqlite
+      EXPORTS_DIR: /exports
+      # CORS не обязателен, если фронт отдаёт nginx с того же origin.
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-}
+    volumes:
+      - ./data:/data
+      - ./exports:/exports
+    restart: unless-stopped
+
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    restart: unless-stopped
+

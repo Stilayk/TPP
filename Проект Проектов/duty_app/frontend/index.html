@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Техподдержка</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="brand">Техподдержка</div>
+      </div>
+      <div class="topbar-right">
+        <div class="me-block">
+          <div id="meText" class="me-text"></div>
+        </div>
+        <button id="logoutBtn" class="btn danger" type="button">Выйти</button>
+      </div>
+    </header>
+
+    <main class="container">
+      <div id="indexError" class="msg error" role="alert" hidden></div>
+
+      <div class="tabs" role="tablist" aria-label="Разделы">
+        <button class="tab-btn active" data-tab="graph" role="tab" aria-selected="true" type="button">График</button>
+        <button class="tab-btn" data-tab="reports" role="tab" aria-selected="false" type="button">Отчеты</button>
+        <button id="adminTabBtn" class="tab-btn" data-tab="admin" role="tab" aria-selected="false" hidden>Админ</button>
+      </div>
+
+      <section class="tab-panel active" id="tab-graph" role="tabpanel" aria-label="График дежурств">
+        <div class="section">
+          <h2>График дежурств</h2>
+
+          <div class="toolbar">
+            <div class="field inline">
+              <label for="dutiesDate">Дата</label>
+              <input id="dutiesDate" type="date" />
+            </div>
+            <button id="loadDutiesBtn" class="btn" type="button">Показать</button>
+          </div>
+
+          <div id="dutiesMsg" class="msg info" hidden></div>
+
+          <div class="table-wrap">
+            <table class="table" id="dutiesTable">
+              <thead>
+                <tr>
+                  <th>Смена</th>
+                  <th class="col-employee">Сотрудник</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="actions admin-only" hidden>
+            <button id="saveDutiesBtn" class="btn primary" type="button">Сохранить изменения</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-reports" role="tabpanel" aria-label="Отчеты">
+        <div class="section">
+          <h2>Отчеты</h2>
+
+          <div class="toolbar">
+            <div class="field inline">
+              <label for="reportsDate">Дата</label>
+              <input id="reportsDate" type="date" />
+            </div>
+
+            <div id="reportsEmployeeRow" class="field inline admin-only" hidden>
+              <label for="reportsEmployeeSelect">Сотрудник</label>
+              <select id="reportsEmployeeSelect"></select>
+            </div>
+
+            <button id="loadReportsBtn" class="btn" type="button">Показать</button>
+          </div>
+
+          <div id="reportsMsg" class="msg info" hidden></div>
+
+          <div id="reportsList" class="reports-list"></div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-admin" role="tabpanel" aria-label="Админ">
+        <div class="section">
+          <h2>Админ</h2>
+
+          <div class="card">
+            <h3>Генерация графика</h3>
+            <div class="toolbar">
+              <div class="field inline">
+                <label for="genStartDate">Начало</label>
+                <input id="genStartDate" type="date" />
+              </div>
+              <div class="field inline">
+                <label for="genEndDate">Конец</label>
+                <input id="genEndDate" type="date" />
+              </div>
+              <div class="field inline checkbox">
+                <label class="checkbox-label">
+                  <input id="genOverwrite" type="checkbox" />
+                  Перезаписать существующие
+                </label>
+              </div>
+              <button id="genDutiesBtn" class="btn primary" type="button">Сгенерировать смены</button>
+            </div>
+            <div id="genDutiesMsg" class="msg info" hidden></div>
+            <div id="genDutiesResult" class="muted"></div>
+          </div>
+
+          <div class="card">
+            <h3>Сотрудники</h3>
+            <div class="toolbar">
+              <div class="field">
+                <label for="newUserUsername">Логин</label>
+                <input id="newUserUsername" type="text" />
+              </div>
+              <div class="field">
+                <label for="newUserFullName">ФИО</label>
+                <input id="newUserFullName" type="text" />
+              </div>
+              <div class="field">
+                <label for="newUserPassword">Пароль</label>
+                <input id="newUserPassword" type="password" />
+              </div>
+            </div>
+            <div class="actions">
+              <button id="createUserBtn" class="btn" type="button">Добавить сотрудника</button>
+            </div>
+            <div id="createUserMsg" class="msg info" hidden></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
+
