@@ -292,6 +292,7 @@ class EmployeeExitInstructionRequest(BaseModel):
     fio: str = Field(min_length=1, max_length=300)
     login: str = Field(min_length=1, max_length=128)
     password: str = Field(min_length=1, max_length=200)
+    domain: str = Field(min_length=1, max_length=128)
 
 
 class EmployeeExitInstructionOut(BaseModel):
@@ -428,19 +429,23 @@ def exports_dir() -> Path:
     return p
 
 
-def build_employee_exit_instruction(fio: str, login: str, password: str) -> str:
+def build_employee_exit_instruction(fio: str, login: str, password: str, domain: str) -> str:
     fio = (fio or "").strip()
     login = (login or "").strip()
     password = (password or "").strip()
+    domain = (domain or "").strip()
+    domain_login_example = f"{domain}\\{login}"
     return (
         f"Добрый день, {fio}, я системный администратор в компании Sokolov, вам выдано оборудование.\n\n"
-        "При включении ноутбука открывается bitlocker - стандартный пароль от него Sokolov2025 \n"
-        f"Ваш логин - {login}, ваш пароль при первом входе попросит сменить - {password}.\n\n"
+        "При включении ноутбука открывается bitlocker - стандартный пароль от него Sokolov2026 \n"
+        f"Ваш логин - {login}, ваш пароль, при первом входе попросит сменить - {password}.\n\n"
+        f"Ваш домен — {domain}.\n"
+        f"Пример учётной записи в формате домена: {domain_login_example}\n\n"
         "Вход в сервисы осуществляется по доменной учётной записи.\n\n"
         "После входа в учетную запись вы можете войти в информационные ресурсы компании, почту, битрикс24. \n"
         "При входе в Битрикс у вас запросит адрес сайта - 'portal.hpdd.ru', логин и пароль от вашей доменной учётной записи.\n"
         "Для входа в Outlook также используется доменная учётная запись.\n"
-        r"При входе в ZOOM нужно выбрать вход через Active Directory, далее ввести свой домен (пример rz\логин и пароль)" "\n\n"
+        f"При входе в ZOOM нужно выбрать вход через Active Directory и ввести учётную запись в формате {domain_login_example} и пароль.\n\n"
         "Важно:\n"
         "• Папка 'Загрузки' автоматически очищается при перезагрузке.\n"
         "• Папка 'Документы' синхронизируется с сервером, для удобства при смене оборудования - данные будут синхронизированы.\n\n"
@@ -448,13 +453,13 @@ def build_employee_exit_instruction(fio: str, login: str, password: str) -> str:
     )
 
 
-def build_employee_exit_instruction_docx_bytes(fio: str, login: str, password: str) -> bytes:
+def build_employee_exit_instruction_docx_bytes(fio: str, login: str, password: str, domain: str) -> bytes:
     if Document is None:
         raise HTTPException(
             status_code=503,
             detail="Генерация Word недоступна: в образе не установлен пакет python-docx. Пересоберите backend.",
         )
-    text = build_employee_exit_instruction(fio, login, password)
+    text = build_employee_exit_instruction(fio, login, password, domain)
     doc = Document()
     for line in text.splitlines():
         doc.add_paragraph(line)
@@ -755,7 +760,7 @@ def employee_exit_instruction(
     payload: EmployeeExitInstructionRequest,
     _user: User = Depends(require_support_or_admin),
 ) -> EmployeeExitInstructionOut:
-    text = build_employee_exit_instruction(payload.fio, payload.login, payload.password)
+    text = build_employee_exit_instruction(payload.fio, payload.login, payload.password, payload.domain)
     return EmployeeExitInstructionOut(text=text)
 
 
@@ -766,7 +771,7 @@ def employee_exit_instruction_docx(
     payload: EmployeeExitInstructionRequest,
     _user: User = Depends(require_support_or_admin),
 ) -> Response:
-    content = build_employee_exit_instruction_docx_bytes(payload.fio, payload.login, payload.password)
+    content = build_employee_exit_instruction_docx_bytes(payload.fio, payload.login, payload.password, payload.domain)
     fname = attachment_filename_docx(payload.fio.strip() or "employee")
     ascii_fallback = re.sub(r"[^A-Za-z0-9._-]+", "_", fname) or "instrukciya.docx"
     cd = f"attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{quote(fname)}"
