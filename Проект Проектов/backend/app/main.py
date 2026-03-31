@@ -1,24 +1,35 @@
 from __future__ import annotations
 
 import os
+import json
 import random
 import re
+import io
+import zipfile
 from contextlib import contextmanager
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Generator, Optional
+from urllib.parse import quote
+from urllib.request import Request as UrlRequest, urlopen
+from urllib.error import HTTPError, URLError
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Integer, String, UniqueConstraint, create_engine, delete, func, select, update
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Integer, String, UniqueConstraint, create_engine, delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 from starlette.middleware.sessions import SessionMiddleware
 
 from openpyxl import Workbook
+
+try:
+    from docx import Document
+except ImportError:  # pragma: no cover
+    Document = None  # type: ignore[misc, assignment]
 
 try:
     from passlib.context import CryptContext
@@ -39,6 +50,8 @@ class Settings(BaseSettings):
 
     PORT: int = 8000
     CORS_ALLOW_ORIGINS: str = ""  # comma-separated
+    N8N_WEBHOOK_URL: str = ""
+    N8N_WEBHOOK_TIMEOUT_SEC: int = 5
 
 
 settings = Settings()
@@ -73,6 +86,7 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(String(16), nullable=False, index=True)  # "admin" | "support"
     password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
+    is_active_for_duties: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     duty_assignments: Mapped[list["DutyAssignment"]] = relationship(
         back_populates="support_user", cascade="all,delete"
@@ -88,10 +102,30 @@ class DutyAssignment(Base):
     support_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
 
     __table_args__ = (
-        CheckConstraint("slot >= 0 AND slot <= 8", name="ck_duty_slot_range"),
+        CheckConstraint("slot >= 0 AND slot <= 10", name="ck_duty_slot_range"),
     )
 
     support_user: Mapped[User] = relationship(back_populates="duty_assignments")
+
+
+class DutySwapRequest(Base):
+    __tablename__ = "duty_swap_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    from_slot: Mapped[int] = mapped_column(Integer, nullable=False)
+    to_slot: Mapped[int] = mapped_column(Integer, nullable=False)
+    requester_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    target_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    message: Mapped[str] = mapped_column(String(500), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+    __table_args__ = (
+        CheckConstraint("from_slot >= 0 AND from_slot <= 10", name="ck_swap_from_slot_range"),
+        CheckConstraint("to_slot >= 0 AND to_slot <= 10", name="ck_swap_to_slot_range"),
+        CheckConstraint("status IN ('pending','accepted','rejected')", name="ck_swap_status"),
+    )
 
 
 class DailyReport(Base):
@@ -171,7 +205,9 @@ def get_db():
         yield db
 
 
-SLOT_START_HOUR = 9
+SLOT_START_HOUR = 7
+SLOT_COUNT = 11
+SLOT_MAX_INDEX = SLOT_COUNT - 1
 
 
 def slot_start_time_str(slot: int) -> str:
@@ -180,6 +216,13 @@ def slot_start_time_str(slot: int) -> str:
 
 def slot_time_delta(slot: int) -> timedelta:
     return timedelta(hours=slot)
+
+
+def duty_slot_for_dt(dt: datetime) -> tuple[date, int] | tuple[None, None]:
+    slot = dt.hour - SLOT_START_HOUR
+    if slot < 0 or slot > SLOT_MAX_INDEX:
+        return None, None
+    return dt.date(), slot
 
 
 def ensure_support_user(db, user_id: int) -> User:
@@ -227,11 +270,40 @@ class AdminChangePasswordRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=200)
 
 
+class AdminDutyStatusRequest(BaseModel):
+    is_active_for_duties: bool
+
+
+class AdminUpdateUserRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    full_name: str = Field(min_length=1, max_length=200)
+
+
+class SelfChangePasswordRequest(BaseModel):
+    old_password: str = Field(min_length=1, max_length=200)
+    new_password: str = Field(min_length=8, max_length=200)
+
+
+class SelfUpdateProfileRequest(BaseModel):
+    full_name: str = Field(min_length=1, max_length=200)
+
+
+class EmployeeExitInstructionRequest(BaseModel):
+    fio: str = Field(min_length=1, max_length=300)
+    login: str = Field(min_length=1, max_length=128)
+    password: str = Field(min_length=1, max_length=200)
+
+
+class EmployeeExitInstructionOut(BaseModel):
+    text: str
+
+
 class UserOut(BaseModel):
     id: int
     username: str
     full_name: str
     role: str
+    is_active_for_duties: bool = True
 
 
 class UserMeOut(UserOut):
@@ -260,13 +332,35 @@ class DutiesGenerateRequest(BaseModel):
 
 
 class DutiesBatchSlot(BaseModel):
-    slot: int = Field(ge=0, le=8)
+    slot: int = Field(ge=0, le=SLOT_MAX_INDEX)
     user_id: int = Field(ge=1)
 
 
 class DutiesBatchRequest(BaseModel):
     date: date
     assignments: list[DutiesBatchSlot]
+
+
+class DutySwapCreateRequest(BaseModel):
+    date: date
+    from_slot: int = Field(ge=0, le=SLOT_MAX_INDEX)
+    to_slot: int = Field(ge=0, le=SLOT_MAX_INDEX)
+
+
+class DutySwapOut(BaseModel):
+    id: int
+    date: date
+    from_slot: int
+    to_slot: int
+    requester_user_id: int
+    target_user_id: int
+    message: str
+    status: str
+    created_at: datetime
+
+
+class DutySwapDecisionRequest(BaseModel):
+    action: str = Field(pattern="^(accept|reject)$")
 
 
 class ReportEntryIn(BaseModel):
@@ -313,6 +407,16 @@ class ReportFinalizeOut(BaseModel):
     excel_url: str
 
 
+class DutyNotificationDispatchOut(BaseModel):
+    sent: bool
+    reason: Optional[str] = None
+    date: date
+    slot: int
+    start_time: str
+    employee_id: Optional[int] = None
+    employee_name: Optional[str] = None
+
+
 EXPORT_FILENAME_RE = re.compile(r"^report_(\d+)_\d{4}-\d{2}-\d{2}\.xlsx$")
 
 
@@ -324,8 +428,60 @@ def exports_dir() -> Path:
     return p
 
 
+def build_employee_exit_instruction(fio: str, login: str, password: str) -> str:
+    fio = (fio or "").strip()
+    login = (login or "").strip()
+    password = (password or "").strip()
+    return (
+        f"Добрый день, {fio}, я системный администратор в компании Sokolov, вам выдано оборудование.\n\n"
+        "При включении ноутбука открывается bitlocker - стандартный пароль от него Sokolov2025 \n"
+        f"Ваш логин - {login}, ваш пароль при первом входе попросит сменить - {password}.\n\n"
+        "Вход в сервисы осуществляется по доменной учётной записи.\n\n"
+        "После входа в учетную запись вы можете войти в информационные ресурсы компании, почту, битрикс24. \n"
+        "При входе в Битрикс у вас запросит адрес сайта - 'portal.hpdd.ru', логин и пароль от вашей доменной учётной записи.\n"
+        "Для входа в Outlook также используется доменная учётная запись.\n"
+        r"При входе в ZOOM нужно выбрать вход через Active Directory, далее ввести свой домен (пример rz\логин и пароль)" "\n\n"
+        "Важно:\n"
+        "• Папка 'Загрузки' автоматически очищается при перезагрузке.\n"
+        "• Папка 'Документы' синхронизируется с сервером, для удобства при смене оборудования - данные будут синхронизированы.\n\n"
+        "По всем вопросам вы можете набрать по номеру 8 800 1000 750 (добавочный уточняйте у руководителя или в службе поддержки)."
+    )
+
+
+def build_employee_exit_instruction_docx_bytes(fio: str, login: str, password: str) -> bytes:
+    if Document is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Генерация Word недоступна: в образе не установлен пакет python-docx. Пересоберите backend.",
+        )
+    text = build_employee_exit_instruction(fio, login, password)
+    doc = Document()
+    for line in text.splitlines():
+        doc.add_paragraph(line)
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
+def attachment_filename_docx(base_name: str) -> str:
+    safe = safe_export_name_part(base_name) or "employee"
+    return f"instrukciya_{safe}.docx"
+
+
 def report_excel_filename(report: DailyReport) -> str:
     return f"report_{report.id}_{report.date.isoformat()}.xlsx"
+
+
+def surname_from_full_name(full_name: str) -> str:
+    parts = [p for p in (full_name or "").strip().split() if p]
+    if not parts:
+        return "Сотрудник"
+    return parts[0]
+
+
+def safe_export_name_part(value: str) -> str:
+    cleaned = re.sub(r"[\\/:*?\"<>|]+", "_", value).strip()
+    return cleaned or "Сотрудник"
 
 
 def build_report_excel(report: DailyReport, user: User) -> Path:
@@ -394,7 +550,7 @@ def report_to_out(db, report: DailyReport) -> DailyReportOut:
     )
 
 
-app = FastAPI(title="Support Duty & Reports API")
+app = FastAPI(title="Support Duty & Reports API", redirect_slashes=False)
 
 cors_origins = [o.strip() for o in settings.CORS_ALLOW_ORIGINS.split(",") if o.strip()]
 if cors_origins:
@@ -425,10 +581,94 @@ def bootstrap_admin_if_needed(db) -> None:
     db.commit()
 
 
+def ensure_user_is_active_column() -> None:
+    eng = get_engine()
+    with eng.begin() as conn:
+        cols = conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()
+        names = {str(c[1]) for c in cols}
+        if "is_active_for_duties" not in names:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN is_active_for_duties INTEGER NOT NULL DEFAULT 1"
+            )
+
+
+def ensure_duty_swap_status_column() -> None:
+    eng = get_engine()
+    with eng.begin() as conn:
+        cols = conn.exec_driver_sql("PRAGMA table_info(duty_swap_requests)").fetchall()
+        names = {str(c[1]) for c in cols}
+        if "status" not in names:
+            conn.exec_driver_sql(
+                "ALTER TABLE duty_swap_requests ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'"
+            )
+
+
+def ensure_slot_range_constraints() -> None:
+    eng = get_engine()
+    with eng.begin() as conn:
+        duty_sql = conn.exec_driver_sql(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='duty_assignments'"
+        ).scalar_one_or_none()
+        if duty_sql and "slot <= 8" in str(duty_sql):
+            conn.exec_driver_sql(
+                """
+                CREATE TABLE duty_assignments_new (
+                    date DATE NOT NULL,
+                    slot INTEGER NOT NULL,
+                    support_user_id INTEGER NOT NULL,
+                    PRIMARY KEY (date, slot),
+                    CONSTRAINT ck_duty_slot_range CHECK (slot >= 0 AND slot <= 10),
+                    FOREIGN KEY(support_user_id) REFERENCES users (id)
+                )
+                """
+            )
+            conn.exec_driver_sql(
+                "INSERT INTO duty_assignments_new(date, slot, support_user_id) "
+                "SELECT date, slot, support_user_id FROM duty_assignments"
+            )
+            conn.exec_driver_sql("DROP TABLE duty_assignments")
+            conn.exec_driver_sql("ALTER TABLE duty_assignments_new RENAME TO duty_assignments")
+
+        swap_sql = conn.exec_driver_sql(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='duty_swap_requests'"
+        ).scalar_one_or_none()
+        if swap_sql and ("from_slot <= 8" in str(swap_sql) or "to_slot <= 8" in str(swap_sql)):
+            conn.exec_driver_sql(
+                """
+                CREATE TABLE duty_swap_requests_new (
+                    id INTEGER NOT NULL,
+                    date DATE NOT NULL,
+                    from_slot INTEGER NOT NULL,
+                    to_slot INTEGER NOT NULL,
+                    requester_user_id INTEGER NOT NULL,
+                    target_user_id INTEGER NOT NULL,
+                    message VARCHAR(500) NOT NULL,
+                    status VARCHAR(16) NOT NULL DEFAULT 'pending',
+                    created_at DATETIME NOT NULL,
+                    PRIMARY KEY (id),
+                    CONSTRAINT ck_swap_from_slot_range CHECK (from_slot >= 0 AND from_slot <= 10),
+                    CONSTRAINT ck_swap_to_slot_range CHECK (to_slot >= 0 AND to_slot <= 10),
+                    CONSTRAINT ck_swap_status CHECK (status IN ('pending','accepted','rejected')),
+                    FOREIGN KEY(requester_user_id) REFERENCES users (id),
+                    FOREIGN KEY(target_user_id) REFERENCES users (id)
+                )
+                """
+            )
+            conn.exec_driver_sql(
+                "INSERT INTO duty_swap_requests_new(id, date, from_slot, to_slot, requester_user_id, target_user_id, message, status, created_at) "
+                "SELECT id, date, from_slot, to_slot, requester_user_id, target_user_id, message, status, created_at FROM duty_swap_requests"
+            )
+            conn.exec_driver_sql("DROP TABLE duty_swap_requests")
+            conn.exec_driver_sql("ALTER TABLE duty_swap_requests_new RENAME TO duty_swap_requests")
+
+
 @app.on_event("startup")
 def on_startup() -> None:
     # init DB tables + bootstrap admin user
     init_db()
+    ensure_user_is_active_column()
+    ensure_duty_swap_status_column()
+    ensure_slot_range_constraints()
     if not settings.SESSION_SECRET:
         # SessionMiddleware needs it; use explicit error to avoid confusing auth failures.
         raise RuntimeError("SESSION_SECRET env var is required")
@@ -466,11 +706,88 @@ def me(current_user: User = Depends(get_current_user)) -> UserMeOut:
     return UserMeOut(id=current_user.id, username=current_user.username, full_name=current_user.full_name, role=current_user.role)
 
 
+@app.post("/api/me/password")
+def change_own_password(
+    payload: SelfChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db=Depends(get_db),
+) -> dict:
+    if not verify_password(payload.old_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Invalid old password")
+    if verify_password(payload.new_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="New password must differ from old password")
+
+    current_user.password_hash = hash_password(payload.new_password)
+    db.add(current_user)
+    db.commit()
+    return {"ok": True}
+
+
+@app.patch("/api/me/profile", response_model=UserMeOut)
+def update_own_profile(
+    payload: SelfUpdateProfileRequest,
+    current_user: User = Depends(get_current_user),
+    db=Depends(get_db),
+) -> UserMeOut:
+    current_user.full_name = payload.full_name.strip()
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return UserMeOut(
+        id=current_user.id,
+        username=current_user.username,
+        full_name=current_user.full_name,
+        role=current_user.role,
+    )
+
+
+@app.get("/api/employee_exit/ping")
+@app.get("/api/ee_instruction/ping")
+def employee_exit_ping() -> dict:
+    """Публичная проверка маршрута (без сессии)."""
+    return {"ok": True, "employee_exit": True}
+
+
+@app.post("/api/ee_instruction", response_model=EmployeeExitInstructionOut)
+@app.post("/api/employee_exit/instruction", response_model=EmployeeExitInstructionOut)
+@app.post("/api/employee-exit/instruction", response_model=EmployeeExitInstructionOut)
+def employee_exit_instruction(
+    payload: EmployeeExitInstructionRequest,
+    _user: User = Depends(require_support_or_admin),
+) -> EmployeeExitInstructionOut:
+    text = build_employee_exit_instruction(payload.fio, payload.login, payload.password)
+    return EmployeeExitInstructionOut(text=text)
+
+
+@app.post("/api/ee_instruction/docx")
+@app.post("/api/employee_exit/instruction/docx")
+@app.post("/api/employee-exit/instruction/docx")
+def employee_exit_instruction_docx(
+    payload: EmployeeExitInstructionRequest,
+    _user: User = Depends(require_support_or_admin),
+) -> Response:
+    content = build_employee_exit_instruction_docx_bytes(payload.fio, payload.login, payload.password)
+    fname = attachment_filename_docx(payload.fio.strip() or "employee")
+    ascii_fallback = re.sub(r"[^A-Za-z0-9._-]+", "_", fname) or "instrukciya.docx"
+    cd = f"attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{quote(fname)}"
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": cd},
+    )
+
+
 @app.get("/api/admin/users")
 def admin_list_users(current_user: User = Depends(require_admin), db=Depends(get_db)) -> list[UserOut]:
     users = db.execute(select(User).where(User.role == "support").order_by(User.id)).scalars().all()
     return [
-        UserOut(id=u.id, username=u.username, full_name=u.full_name, role=u.role)
+        UserOut(
+            id=u.id,
+            username=u.username,
+            full_name=u.full_name,
+            role=u.role,
+            is_active_for_duties=bool(u.is_active_for_duties),
+        )
         for u in users
     ]
 
@@ -485,7 +802,60 @@ def admin_create_user(payload: CreateSupportUserRequest, current_user: User = De
         db.rollback()
         raise HTTPException(status_code=409, detail="Username already exists")
     db.refresh(user)
-    return UserOut(id=user.id, username=user.username, full_name=user.full_name, role=user.role)
+    return UserOut(
+        id=user.id,
+        username=user.username,
+        full_name=user.full_name,
+        role=user.role,
+        is_active_for_duties=bool(user.is_active_for_duties),
+    )
+
+
+@app.patch("/api/admin/users/{user_id}/duty-status", response_model=UserOut)
+def admin_update_user_duty_status(
+    user_id: int,
+    payload: AdminDutyStatusRequest,
+    current_user: User = Depends(require_admin),
+    db=Depends(get_db),
+) -> UserOut:
+    user = ensure_support_user(db, user_id)
+    user.is_active_for_duties = payload.is_active_for_duties
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return UserOut(
+        id=user.id,
+        username=user.username,
+        full_name=user.full_name,
+        role=user.role,
+        is_active_for_duties=bool(user.is_active_for_duties),
+    )
+
+
+@app.patch("/api/admin/users/{user_id}", response_model=UserOut)
+def admin_update_user_profile(
+    user_id: int,
+    payload: AdminUpdateUserRequest,
+    current_user: User = Depends(require_admin),
+    db=Depends(get_db),
+) -> UserOut:
+    user = ensure_support_user(db, user_id)
+    user.username = payload.username.strip()
+    user.full_name = payload.full_name.strip()
+    db.add(user)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Username already exists")
+    db.refresh(user)
+    return UserOut(
+        id=user.id,
+        username=user.username,
+        full_name=user.full_name,
+        role=user.role,
+        is_active_for_duties=bool(user.is_active_for_duties),
+    )
 
 
 @app.post("/api/admin/users/{user_id}/password")
@@ -565,7 +935,7 @@ def get_duties(
     by_slot: dict[int, User] = {slot: user for (assignment, user) in assignments for slot in [assignment.slot]}
 
     slots_out: list[DutySlotOut] = []
-    for slot in range(0, 9):
+    for slot in range(0, SLOT_COUNT):
         user = by_slot.get(slot)
         slots_out.append(
             DutySlotOut(
@@ -582,9 +952,11 @@ def generate_duties(payload: DutiesGenerateRequest, current_user: User = Depends
     if payload.end_date < payload.start_date:
         raise HTTPException(status_code=400, detail="end_date must be >= start_date")
 
-    support_users = db.execute(select(User).where(User.role == "support").order_by(User.id)).scalars().all()
+    support_users = db.execute(
+        select(User).where(User.role == "support", User.is_active_for_duties == True).order_by(User.id)  # noqa: E712
+    ).scalars().all()
     if not support_users:
-        raise HTTPException(status_code=400, detail="No support users configured")
+        raise HTTPException(status_code=400, detail="No active support users configured")
 
     user_ids = [u.id for u in support_users]
 
@@ -635,7 +1007,7 @@ def generate_duties(payload: DutiesGenerateRequest, current_user: User = Depends
 
         for day_index in range((payload.end_date - payload.start_date).days + 1):
             current_day = payload.start_date + timedelta(days=day_index)
-            for slot in range(0, 9):
+            for slot in range(0, SLOT_COUNT):
                 key = (current_day, slot)
                 if (not payload.overwrite) and key in existing_in_range:
                     chosen_uid = existing_in_range[key]
@@ -695,6 +1067,225 @@ def duties_batch(payload: DutiesBatchRequest, current_user: User = Depends(requi
         tx_db.commit()
 
     return {"date": payload.date, "created": created, "updated": updated}
+
+
+@app.post("/api/admin/notifications/duty-upcoming/dispatch", response_model=DutyNotificationDispatchOut)
+def admin_dispatch_upcoming_duty_notification(
+    at: Optional[datetime] = Query(None, description="Optional override time, ISO datetime"),
+    current_user: User = Depends(require_admin),
+    db=Depends(get_db),
+) -> DutyNotificationDispatchOut:
+    target_dt = (at or datetime.now()) + timedelta(minutes=2)
+    duty_date, duty_slot = duty_slot_for_dt(target_dt)
+    if duty_date is None or duty_slot is None:
+        raise HTTPException(status_code=400, detail="No duty slot in +2 minute window")
+
+    row = db.execute(
+        select(DutyAssignment, User)
+        .join(User, DutyAssignment.support_user_id == User.id)
+        .where(DutyAssignment.date == duty_date, DutyAssignment.slot == duty_slot)
+    ).first()
+    if not row:
+        return DutyNotificationDispatchOut(
+            sent=False,
+            reason="No assigned employee for upcoming slot",
+            date=duty_date,
+            slot=duty_slot,
+            start_time=slot_start_time_str(duty_slot),
+        )
+
+    assignment, user = row
+    payload = {
+        "event": "duty_upcoming_2m",
+        "date": assignment.date.isoformat(),
+        "slot": int(assignment.slot),
+        "start_time": slot_start_time_str(assignment.slot),
+        "employee": {
+            "id": int(user.id),
+            "full_name": user.full_name,
+            "username": user.username,
+        },
+    }
+
+    if not settings.N8N_WEBHOOK_URL:
+        return DutyNotificationDispatchOut(
+            sent=False,
+            reason="N8N webhook is not configured",
+            date=assignment.date,
+            slot=assignment.slot,
+            start_time=slot_start_time_str(assignment.slot),
+            employee_id=user.id,
+            employee_name=user.full_name,
+        )
+
+    req = UrlRequest(
+        settings.N8N_WEBHOOK_URL,
+        data=json.dumps(payload).encode("utf-8"),
+        method="POST",
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urlopen(req, timeout=settings.N8N_WEBHOOK_TIMEOUT_SEC):
+            pass
+    except HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"n8n webhook error: {e.code}")
+    except URLError:
+        raise HTTPException(status_code=502, detail="n8n webhook unavailable")
+
+    return DutyNotificationDispatchOut(
+        sent=True,
+        date=assignment.date,
+        slot=assignment.slot,
+        start_time=slot_start_time_str(assignment.slot),
+        employee_id=user.id,
+        employee_name=user.full_name,
+    )
+
+
+@app.post("/api/duty-swaps", response_model=DutySwapOut)
+def create_duty_swap_request(
+    payload: DutySwapCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db=Depends(get_db),
+) -> DutySwapOut:
+    if current_user.role != "support":
+        raise HTTPException(status_code=403, detail="Only support users can create swap requests")
+    if payload.from_slot == payload.to_slot:
+        raise HTTPException(status_code=400, detail="Choose different duty slots")
+
+    requester_assignment = db.execute(
+        select(DutyAssignment).where(
+            DutyAssignment.date == payload.date,
+            DutyAssignment.slot == payload.from_slot,
+        )
+    ).scalar_one_or_none()
+    if not requester_assignment or requester_assignment.support_user_id != current_user.id:
+        raise HTTPException(status_code=400, detail="You are not assigned to the selected source slot")
+
+    target_assignment = db.execute(
+        select(DutyAssignment).where(
+            DutyAssignment.date == payload.date,
+            DutyAssignment.slot == payload.to_slot,
+        )
+    ).scalar_one_or_none()
+    if not target_assignment:
+        raise HTTPException(status_code=400, detail="Target slot has no assigned employee")
+
+    target_user = ensure_support_user(db, int(target_assignment.support_user_id))
+    if target_user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot create swap request with yourself")
+
+    message = (
+        f"{target_user.full_name}, {current_user.full_name} запрашивает обмен дежурствами "
+        f"с {slot_start_time_str(payload.from_slot)} на {slot_start_time_str(payload.to_slot)}"
+    )
+    row = DutySwapRequest(
+        date=payload.date,
+        from_slot=payload.from_slot,
+        to_slot=payload.to_slot,
+        requester_user_id=current_user.id,
+        target_user_id=target_user.id,
+        message=message,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return DutySwapOut(
+        id=row.id,
+        date=row.date,
+        from_slot=row.from_slot,
+        to_slot=row.to_slot,
+        requester_user_id=row.requester_user_id,
+        target_user_id=row.target_user_id,
+        message=row.message,
+        status=row.status,
+        created_at=row.created_at,
+    )
+
+
+@app.get("/api/duty-swaps/inbox", response_model=list[DutySwapOut])
+def list_duty_swap_inbox(
+    date_: Optional[date] = Query(None, alias="date"),
+    current_user: User = Depends(get_current_user),
+    db=Depends(get_db),
+) -> list[DutySwapOut]:
+    if current_user.role != "support":
+        return []
+    stmt = select(DutySwapRequest).where(DutySwapRequest.target_user_id == current_user.id)
+    if date_ is not None:
+        stmt = stmt.where(DutySwapRequest.date == date_)
+    rows = db.execute(stmt.order_by(DutySwapRequest.created_at.desc())).scalars().all()
+    return [
+        DutySwapOut(
+            id=r.id,
+            date=r.date,
+            from_slot=r.from_slot,
+            to_slot=r.to_slot,
+            requester_user_id=r.requester_user_id,
+            target_user_id=r.target_user_id,
+            message=r.message,
+            status=r.status,
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]
+
+
+@app.post("/api/duty-swaps/{swap_id}/decision", response_model=DutySwapOut)
+def decide_duty_swap_request(
+    swap_id: int,
+    payload: DutySwapDecisionRequest,
+    current_user: User = Depends(get_current_user),
+    db=Depends(get_db),
+) -> DutySwapOut:
+    if current_user.role != "support":
+        raise HTTPException(status_code=403, detail="Only support users can decide swap requests")
+
+    row = db.get(DutySwapRequest, swap_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Swap request not found")
+    if row.target_user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if row.status != "pending":
+        raise HTTPException(status_code=409, detail="Swap request is already processed")
+
+    if payload.action == "accept":
+        requester_slot = db.execute(
+            select(DutyAssignment).where(
+                DutyAssignment.date == row.date,
+                DutyAssignment.slot == row.from_slot,
+            )
+        ).scalar_one_or_none()
+        target_slot = db.execute(
+            select(DutyAssignment).where(
+                DutyAssignment.date == row.date,
+                DutyAssignment.slot == row.to_slot,
+            )
+        ).scalar_one_or_none()
+        if not requester_slot or not target_slot:
+            raise HTTPException(status_code=409, detail="Duty slots are missing")
+        if requester_slot.support_user_id != row.requester_user_id or target_slot.support_user_id != row.target_user_id:
+            raise HTTPException(status_code=409, detail="Duty assignments changed, recreate swap request")
+
+        requester_slot.support_user_id, target_slot.support_user_id = target_slot.support_user_id, requester_slot.support_user_id
+        row.status = "accepted"
+    else:
+        row.status = "rejected"
+
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return DutySwapOut(
+        id=row.id,
+        date=row.date,
+        from_slot=row.from_slot,
+        to_slot=row.to_slot,
+        requester_user_id=row.requester_user_id,
+        target_user_id=row.target_user_id,
+        message=row.message,
+        status=row.status,
+        created_at=row.created_at,
+    )
 
 
 @app.post("/api/reports", response_model=DailyReportOut)
@@ -783,9 +1374,6 @@ def update_report(
     if current_user.role == "support" and report.support_user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    if report.status == "final":
-        raise HTTPException(status_code=409, detail="Report is finalized")
-
     new_date = payload.date or report.date
     new_support_id = payload.employee_id or report.support_user_id
 
@@ -814,6 +1402,14 @@ def update_report(
         db.add(ReportEntry(report_id=report.id, minutes=entry.minutes, description=entry.description))
 
     db.commit()
+    # If report was finalized before edit, force Excel rebuild on next download/finalize.
+    filename = report_excel_filename(report)
+    out_path = (exports_dir() / filename).resolve()
+    if out_path.exists():
+        try:
+            out_path.unlink()
+        except OSError:
+            pass
     db.refresh(report)
     return report_to_out(db, report)
 
@@ -836,18 +1432,27 @@ def finalize_report(report_id: int, current_user: User = Depends(get_current_use
     # If already finalized, just return existing URL.
     if report.status == "final":
         filename = report_excel_filename(report)
+        out_path = (exports_dir() / filename).resolve()
+        if not out_path.exists():
+            employee = db.get(User, report.support_user_id)
+            if not employee:
+                raise HTTPException(status_code=500, detail="Employee not found")
+            build_report_excel(report, employee)
         return ReportFinalizeOut(report_id=report.id, status="final", excel_url=f"/exports/{filename}")
 
     employee = db.get(User, report.support_user_id)
     if not employee:
         raise HTTPException(status_code=500, detail="Employee not found")
 
-    # Generate excel first, then mark finalized (so a failure won't mark it final).
-    build_report_excel(report, employee)
-
     report.status = "final"
     report.finalized_at = datetime.utcnow()
-    db.commit()
+    try:
+        # Generate excel with final status and persist only after success.
+        build_report_excel(report, employee)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(report)
 
     filename = report_excel_filename(report)
@@ -855,7 +1460,7 @@ def finalize_report(report_id: int, current_user: User = Depends(get_current_use
 
 
 @app.get("/exports/{filename}")
-def download_export(filename: str, db=Depends(get_db)) -> FileResponse:
+def download_export(filename: str, current_user: User = Depends(get_current_user), db=Depends(get_db)) -> FileResponse:
     # Path traversal protection + strict naming rule.
     if not _filename_safe(filename):
         raise HTTPException(status_code=400, detail="Invalid filename")
@@ -867,6 +1472,9 @@ def download_export(filename: str, db=Depends(get_db)) -> FileResponse:
     report = db.get(DailyReport, report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Not found")
+
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
 
     if report.status != "final":
         raise HTTPException(status_code=404, detail="Not finalized")
@@ -881,7 +1489,63 @@ def download_export(filename: str, db=Depends(get_db)) -> FileResponse:
             raise HTTPException(status_code=400, detail="Invalid path")
 
     if not out_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
+        employee = db.get(User, report.support_user_id)
+        if not employee:
+            raise HTTPException(status_code=500, detail="Employee not found")
+        build_report_excel(report, employee)
+        if not out_path.exists():
+            raise HTTPException(status_code=404, detail="File not found")
 
     return FileResponse(path=str(out_path), filename=filename, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
+
+@app.get("/api/admin/reports/export-all")
+def admin_export_all_reports_excel(
+    date_: date = Query(..., alias="date"),
+    current_user: User = Depends(require_admin),
+    db=Depends(get_db),
+) -> StreamingResponse:
+    support_users = db.execute(select(User).where(User.role == "support").order_by(User.id)).scalars().all()
+    reports = db.execute(select(DailyReport).where(DailyReport.date == date_)).scalars().all()
+    by_user_id = {r.support_user_id: r for r in reports}
+
+    missing_employees: list[str] = []
+    zip_buffer = io.BytesIO()
+    used_names: set[str] = set()
+    included = 0
+
+    with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for user in support_users:
+            report = by_user_id.get(user.id)
+            if not report or report.status != "final":
+                missing_employees.append(user.full_name)
+                continue
+
+            filename = report_excel_filename(report)
+            out_path = (exports_dir() / filename).resolve()
+            if not out_path.exists():
+                build_report_excel(report, user)
+            if not out_path.exists():
+                missing_employees.append(user.full_name)
+                continue
+
+            surname = safe_export_name_part(surname_from_full_name(user.full_name))
+            base_name = f"{surname} {date_.isoformat()}"
+            arcname = f"{base_name}.xlsx"
+            if arcname in used_names:
+                arcname = f"{base_name} ({user.id}).xlsx"
+            used_names.add(arcname)
+            zf.writestr(arcname, out_path.read_bytes())
+            included += 1
+
+    if included == 0:
+        raise HTTPException(status_code=400, detail="Нет сформированных Excel-файлов на выбранную дату")
+
+    zip_buffer.seek(0)
+    bundle_name = f"excel_reports_{date_.isoformat()}.zip"
+    headers = {
+        "Content-Disposition": f'attachment; filename="{bundle_name}"',
+        "X-Missing-Employees": quote(",".join(missing_employees)),
+        "X-Included-Count": str(included),
+    }
+    return StreamingResponse(zip_buffer, media_type="application/zip", headers=headers)

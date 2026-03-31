@@ -36,6 +36,12 @@ class Handler(SimpleHTTPRequestHandler):
             return
         self.send_error(404)
 
+    def do_PATCH(self):
+        if self.path.startswith("/api/"):
+            self._proxy()
+            return
+        self.send_error(404)
+
     def _proxy(self):
         body = None
         if "Content-Length" in self.headers:

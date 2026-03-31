@@ -11,9 +11,27 @@ services:
       EXPORTS_DIR: /exports
       # CORS не обязателен, если фронт отдаёт nginx с того же origin.
       CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
+      N8N_WEBHOOK_TIMEOUT_SEC: ${N8N_WEBHOOK_TIMEOUT_SEC:-5}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      BOOTSTRAP_ADMIN_FULLNAME: ${BOOTSTRAP_ADMIN_FULLNAME:-}
     volumes:
       - ./data:/data
       - ./exports:/exports
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     restart: unless-stopped
 
   nginx:
@@ -21,7 +39,8 @@ services:
       context: .
       dockerfile: nginx/Dockerfile
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "80:80"
     restart: unless-stopped
