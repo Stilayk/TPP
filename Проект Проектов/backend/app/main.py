@@ -223,6 +223,10 @@ class CreateSupportUserRequest(BaseModel):
     password: str = Field(min_length=1, max_length=200)
 
 
+class AdminChangePasswordRequest(BaseModel):
+    new_password: str = Field(min_length=8, max_length=200)
+
+
 class UserOut(BaseModel):
     id: int
     username: str
@@ -482,6 +486,69 @@ def admin_create_user(payload: CreateSupportUserRequest, current_user: User = De
         raise HTTPException(status_code=409, detail="Username already exists")
     db.refresh(user)
     return UserOut(id=user.id, username=user.username, full_name=user.full_name, role=user.role)
+
+
+@app.post("/api/admin/users/{user_id}/password")
+def admin_change_user_password(
+    user_id: int,
+    payload: AdminChangePasswordRequest,
+    current_user: User = Depends(require_admin),
+    db=Depends(get_db),
+) -> dict:
+    user = ensure_support_user(db, user_id)
+    user.password_hash = hash_password(payload.new_password)
+    db.add(user)
+    db.commit()
+    return {"ok": True, "user_id": user.id}
+
+
+@app.delete("/api/admin/users/{user_id}/reports")
+def admin_delete_user_reports(user_id: int, current_user: User = Depends(require_admin), db=Depends(get_db)) -> dict:
+    user = ensure_support_user(db, user_id)
+    reports = db.execute(
+        select(DailyReport.id, DailyReport.date).where(DailyReport.support_user_id == user.id)
+    ).all()
+    report_ids = [int(report_id) for report_id, _ in reports]
+
+    deleted_entries = 0
+    deleted_reports = 0
+    if report_ids:
+        deleted_entries = int(
+            db.execute(delete(ReportEntry).where(ReportEntry.report_id.in_(report_ids))).rowcount or 0
+        )
+        deleted_reports = int(
+            db.execute(delete(DailyReport).where(DailyReport.id.in_(report_ids))).rowcount or 0
+        )
+        db.commit()
+
+    deleted_exports = 0
+    root = exports_dir().resolve()
+    for report_id, report_date in reports:
+        filename = f"report_{report_id}_{report_date.isoformat()}.xlsx"
+        out_path = (root / filename).resolve()
+        if out_path.is_file() and str(out_path).startswith(str(root)):
+            try:
+                out_path.unlink()
+                deleted_exports += 1
+            except OSError:
+                pass
+
+    return {
+        "ok": True,
+        "user_id": user.id,
+        "deleted_reports": deleted_reports,
+        "deleted_entries": deleted_entries,
+        "deleted_exports": deleted_exports,
+    }
+
+
+@app.delete("/api/admin/users/{user_id}")
+def admin_delete_user(user_id: int, current_user: User = Depends(require_admin), db=Depends(get_db)) -> dict:
+    user = ensure_support_user(db, user_id)
+    deleted_user_id = user.id
+    db.delete(user)
+    db.commit()
+    return {"ok": True, "deleted_user_id": deleted_user_id}
 
 
 @app.get("/api/duties", response_model=DutiesOut)

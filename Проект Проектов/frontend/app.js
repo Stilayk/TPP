@@ -76,10 +76,59 @@
     return apiFetchJson("/api/logout", { method: "POST" });
   }
 
+  async function apiAdminChangeUserPassword(userId, newPassword) {
+    return apiFetchJson(`/api/admin/users/${encodeURIComponent(userId)}/password`, {
+      method: "POST",
+      body: { new_password: newPassword },
+    });
+  }
+
+  async function apiAdminDeleteUserReports(userId) {
+    return apiFetchJson(`/api/admin/users/${encodeURIComponent(userId)}/reports`, {
+      method: "DELETE",
+    });
+  }
+
+  async function apiAdminDeleteUser(userId) {
+    return apiFetchJson(`/api/admin/users/${encodeURIComponent(userId)}`, {
+      method: "DELETE",
+    });
+  }
+
   async function loadEmployees() {
     const users = await apiFetchJson("/api/admin/users");
     state.employees = Array.isArray(users) ? users : [];
     return state.employees;
+  }
+
+  function fillEmployeesSelect(selectEl, { includeBlank = true, saveKey = null } = {}) {
+    if (!selectEl) return;
+    selectEl.innerHTML = "";
+
+    if (includeBlank) {
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "—";
+      selectEl.appendChild(placeholder);
+    }
+
+    const saved = saveKey ? localStorage.getItem(saveKey) : null;
+    let selectedFound = false;
+    for (const emp of state.employees) {
+      const opt = document.createElement("option");
+      opt.value = String(emp.id);
+      opt.textContent = emp.full_name || emp.username;
+      if (saved && String(emp.id) === saved) {
+        opt.selected = true;
+        selectedFound = true;
+      }
+      selectEl.appendChild(opt);
+    }
+
+    if (!selectedFound && state.employees.length) {
+      selectEl.value = String(state.employees[0].id);
+      if (saveKey) localStorage.setItem(saveKey, String(state.employees[0].id));
+    }
   }
 
   function setAdminMode(isAdmin) {
@@ -212,7 +261,7 @@
 
     rows.forEach((entry, idx) => {
       const tr = document.createElement("tr");
-      tr.dataset.entry-index = String(idx);
+      tr.dataset.entryIndex = String(idx);
 
       const tdMinutes = document.createElement("td");
       const minutesInput = document.createElement("input");
@@ -518,30 +567,8 @@
       await loadEmployees();
 
       const reportsEmployeeSelect = $("#reportsEmployeeSelect");
-      if (reportsEmployeeSelect) {
-        reportsEmployeeSelect.innerHTML = "";
-        const placeholder = document.createElement("option");
-        placeholder.value = "";
-        placeholder.textContent = "—";
-        reportsEmployeeSelect.appendChild(placeholder);
-
-        const saved = localStorage.getItem("reportsEmployeeId");
-        let selectedFound = false;
-        for (const emp of state.employees) {
-          const opt = document.createElement("option");
-          opt.value = String(emp.id);
-          opt.textContent = emp.full_name || emp.username;
-          if (saved && String(emp.id) === saved) {
-            opt.selected = true;
-            selectedFound = true;
-          }
-          reportsEmployeeSelect.appendChild(opt);
-        }
-        if (!selectedFound && state.employees.length) {
-          reportsEmployeeSelect.value = String(state.employees[0].id);
-          localStorage.setItem("reportsEmployeeId", String(state.employees[0].id));
-        }
-      }
+      fillEmployeesSelect(reportsEmployeeSelect, { includeBlank: true, saveKey: "reportsEmployeeId" });
+      fillEmployeesSelect($("#adminUserSelect"), { includeBlank: false });
 
       const row = $("#reportsEmployeeRow");
       if (row) row.hidden = false;
@@ -632,34 +659,9 @@
         await apiFetchJson("/api/admin/users", { method: "POST", body: payload });
         showMsg(msg, "Сотрудник добавлен.", "success");
 
-        // Refresh employees for dropdowns.
         await loadEmployees();
-
-        const reportsEmployeeSelect = $("#reportsEmployeeSelect");
-        if (reportsEmployeeSelect) {
-          const saved = localStorage.getItem("reportsEmployeeId");
-          reportsEmployeeSelect.innerHTML = "";
-          const placeholder = document.createElement("option");
-          placeholder.value = "";
-          placeholder.textContent = "—";
-          reportsEmployeeSelect.appendChild(placeholder);
-
-          let selectedFound = false;
-          for (const emp of state.employees) {
-            const opt = document.createElement("option");
-            opt.value = String(emp.id);
-            opt.textContent = emp.full_name || emp.username;
-            if (saved && String(emp.id) === saved) {
-              opt.selected = true;
-              selectedFound = true;
-            }
-            reportsEmployeeSelect.appendChild(opt);
-          }
-          if (!selectedFound && state.employees.length) {
-            reportsEmployeeSelect.value = String(state.employees[0].id);
-            localStorage.setItem("reportsEmployeeId", String(state.employees[0].id));
-          }
-        }
+        fillEmployeesSelect($("#reportsEmployeeSelect"), { includeBlank: true, saveKey: "reportsEmployeeId" });
+        fillEmployeesSelect($("#adminUserSelect"), { includeBlank: false });
 
         // Refresh duties table selections.
         if ($("#dutiesDate").value) {
@@ -672,6 +674,58 @@
         if (dateStr && empId) {
           await loadReports(dateStr, empId);
         }
+      } catch (e) {
+        showMsg(msg, e.message || String(e), "error");
+      }
+    });
+
+    $("#adminChangePasswordBtn")?.addEventListener("click", async () => {
+      const msg = $("#adminOpsMsg");
+      try {
+        showMsg(msg, "", "info");
+        const userId = Number($("#adminUserSelect").value);
+        const newPassword = $("#adminNewPassword").value;
+        if (!userId) throw new Error("Выберите сотрудника.");
+        if (!newPassword || newPassword.length < 8) throw new Error("Пароль должен быть не короче 8 символов.");
+        await apiAdminChangeUserPassword(userId, newPassword);
+        $("#adminNewPassword").value = "";
+        showMsg(msg, "Пароль сотрудника обновлен.", "success");
+      } catch (e) {
+        showMsg(msg, e.message || String(e), "error");
+      }
+    });
+
+    $("#adminDeleteReportsBtn")?.addEventListener("click", async () => {
+      const msg = $("#adminOpsMsg");
+      try {
+        showMsg(msg, "", "info");
+        const userId = Number($("#adminUserSelect").value);
+        if (!userId) throw new Error("Выберите сотрудника.");
+        const targetUser = state.employees.find((u) => Number(u.id) === userId);
+        if (!confirm(`Удалить всю историю отчетов сотрудника ${targetUser?.full_name || targetUser?.username || userId}?`)) return;
+        const res = await apiAdminDeleteUserReports(userId);
+        showMsg(msg, `История удалена: отчетов ${res.deleted_reports ?? 0}, файлов ${res.deleted_exports ?? 0}.`, "success");
+      } catch (e) {
+        showMsg(msg, e.message || String(e), "error");
+      }
+    });
+
+    $("#adminDeleteUserBtn")?.addEventListener("click", async () => {
+      const msg = $("#adminOpsMsg");
+      try {
+        showMsg(msg, "", "info");
+        const userId = Number($("#adminUserSelect").value);
+        if (!userId) throw new Error("Выберите сотрудника.");
+        const targetUser = state.employees.find((u) => Number(u.id) === userId);
+        const targetLabel = targetUser?.username || String(userId);
+        if (!confirm(`Удалить сотрудника ${targetLabel}?`)) return;
+        const verify = prompt(`Для подтверждения введите логин сотрудника: ${targetLabel}`);
+        if (verify !== targetLabel) throw new Error("Подтверждение не совпало.");
+        await apiAdminDeleteUser(userId);
+        await loadEmployees();
+        fillEmployeesSelect($("#reportsEmployeeSelect"), { includeBlank: true, saveKey: "reportsEmployeeId" });
+        fillEmployeesSelect($("#adminUserSelect"), { includeBlank: false });
+        showMsg(msg, `Сотрудник ${targetLabel} удален.`, "success");
       } catch (e) {
         showMsg(msg, e.message || String(e), "error");
       }

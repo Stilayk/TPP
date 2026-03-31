@@ -131,6 +131,25 @@
               <button id="createUserBtn" class="btn" type="button">Добавить сотрудника</button>
             </div>
             <div id="createUserMsg" class="msg info" hidden></div>
+
+            <hr />
+            <h4>Управление сотрудником</h4>
+            <div class="toolbar">
+              <div class="field inline">
+                <label for="adminUserSelect">Сотрудник</label>
+                <select id="adminUserSelect"></select>
+              </div>
+              <div class="field">
+                <label for="adminNewPassword">Новый пароль</label>
+                <input id="adminNewPassword" type="password" />
+              </div>
+            </div>
+            <div class="actions">
+              <button id="adminChangePasswordBtn" class="btn" type="button">Сменить пароль</button>
+              <button id="adminDeleteReportsBtn" class="btn" type="button">Удалить историю отчетов</button>
+              <button id="adminDeleteUserBtn" class="btn danger" type="button">Удалить пользователя</button>
+            </div>
+            <div id="adminOpsMsg" class="msg info" hidden></div>
           </div>
         </div>
       </section>
