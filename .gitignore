@@ -8,3 +8,6 @@ __pycache__/
 .eggs/
 dist/
 build/
+
+# Локальные SQLite (данные среды, не коммитить)
+**/backend/data/*.sqlite
