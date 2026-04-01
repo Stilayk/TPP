@@ -8,6 +8,8 @@ COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir --no-compile -r requirements.txt
 
 COPY entrypoint.sh ./entrypoint.sh
+COPY alembic.ini ./alembic.ini
+COPY alembic ./alembic
 COPY app ./app
 
 RUN chmod +x ./entrypoint.sh

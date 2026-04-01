@@ -1,19 +1,24 @@
 # HANDOFF
 
 ## Назначение
-Этот файл - единая точка передачи контекста для сабагентов, чтобы продолжать работу без повторного чтения всего чата.
+Этот файл — единая точка передачи контекста для субагентов, чтобы продолжать работу без повторного чтения всего чата.
+
+**Связанные документы:** чеклист старта — `START_CHECKLIST.md`; формат шага, ACTIVE, микрошаги — `docs/handoff-conventions.md`; старт чата, обзор, DoR/DoD — `AGENT_WORKFLOW.md`; политика оркестрации — `Проект Проектов/subagent-orchestration-policy.md`; проверка контекста — `python scripts/check_agent_context.py`.
 
 ## Правила обновления (обязательно)
-- Любое действие сабагента добавляется в раздел **Лог шагов**.
-- Обязательные поля каждой записи:
+- Записи в **Лог шагов** — по правилам **логического шага** и **микрошагов** в `docs/handoff-conventions.md` (не обязательно после каждой мелкой правки).
+- Обязательные поля каждой записи (подробно и шаблон — `docs/handoff-conventions.md`):
   - **Задача**
   - **Время**
   - **Кто исполнил**
   - **Как исполнил**
-- Записи должны быть короткими и фактологичными (3-6 строк).
-- Смену статуса задачи и следующего шага фиксировать в **Лог шагов** (и при необходимости в `TASKS.md`); блоки **Текущий статус задачи** и **Следующий шаг** в начале файла после принятия `CONTINUE_PROMPT.md` не переписывать (см. `CONTINUE_PROMPT.md`).
+- Записи должны быть короткими и фактологичными (3–6 строк).
+- Смену статуса задачи и следующего шага фиксировать в **Лог шагов** (и при необходимости в `TASKS.md`); блоки **Текущий статус задачи** и **Следующий шаг** не переписывать без договорённости с пользователем (см. `CONTINUE_PROMPT.md`). Строку **ACTIVE** в блоке ниже **можно** обновлять при смене фокуса.
 
-## Роли агентов
+## Якорь ACTIVE
+- **ACTIVE:** по `TASKS.md` открытых задач нет; фокус по логу — локальный запуск (Postgres/`DATABASE_URL`, см. шаги 76–77) и при необходимости QA админки (P1 №1) по блоку **Следующий шаг** ниже.
+
+## Роли субагентов
 - `orchestrator`: декомпозирует работу, назначает следующего исполнителя, снимает блокеры.
 - `backend`: API, бизнес-логика, БД/миграции, happy-path проверки серверной части.
 - `frontend`: UI, интеграция с API, состояние/рендеринг, happy-path проверки интерфейса.
@@ -522,4 +527,74 @@
 - **Кто исполнил:** orchestrator
 - **Как исполнил:** блоки **Текущий статус задачи** и **Следующий шаг** снова приведены к зафиксированному «замороженному» виду (до ошибочной подмены на TASK №7 / P2 №10); в `Проект Проектов/backend/app/main.py` вызов HTTP-клиента для webhook исправлен с `Request(` на `UrlRequest(` при уже существующем импорте `Request as UrlRequest`.
 - **Результат:** затенение `urllib.request.Request` устранено на уровне вызова; актуальный бэклог по-прежнему в `TASKS.md` и в логе шагов.
+
+### Шаг 70
+- **Задача:** Реализовать бэклог `TASKS.md` №17 — PostgreSQL, Alembic, отказ от SQLite-обходов при старте.
+- **Время:** 2026-04-01 10:20 +03:00
+- **Кто исполнил:** orchestrator + backend + devops
+- **Как исполнил:** добавлены `DATABASE_URL` и `get_database_url()` в `Проект Проектов/backend/app/main.py`, `run_migrations()` с `alembic upgrade head` и `stamp head` для старых SQLite без `alembic_version`; удалены `init_db`/`ensure_*` (PRAGMA/sqlite_master); добавлены `Проект Проектов/backend/alembic/`, ревизия `Проект Проектов/backend/alembic/versions/a9ed29c6b953_initial_schema.py`, зависимости в `Проект Проектов/backend/requirements.txt`; в `Проект Проектов/backend/Dockerfile` копируются `alembic` и `alembic.ini`; в `Проект Проектов/docker-compose.yml` — сервис `db` (Postgres), том `pgdata`, `DATABASE_URL` по умолчанию; обновлены `TASKS.md`, `Проект Проектов/deployment_and_tz_request.md`.
+- **Результат:** схема БД версионируется Alembic; в Docker по умолчанию используется PostgreSQL; локально без `DATABASE_URL` остаётся SQLite; задача №17 отмечена выполненной; следующий приоритет в бэклоге — задача №18 (разбиение `main.py`).
+
+### Шаг 71
+- **Задача:** Убрать SQLite из основного backend — только PostgreSQL через `DATABASE_URL`.
+- **Время:** 2026-04-01 12:30 +03:00
+- **Кто исполнил:** orchestrator + backend + devops
+- **Как исполнил:** в `Проект Проектов/backend/app/main.py` удалены `DATABASE_PATH` и fallback на SQLite; `get_database_url()` требует `postgresql://`/`postgresql+psycopg2://`; `get_engine`/`run_migrations` только под Postgres; в `Проект Проектов/backend/alembic/env.py` убрана ветка SQLite; в `Проект Проектов/docker-compose.yml` — `DATABASE_URL` для `backend` собирается на хост `db`, порт `5432` проброшен на хост, удалён volume `./data`; в `Проект Проектов/.env` добавлен пример `DATABASE_URL` на `127.0.0.1` для локального uvicorn; обновлены `Проект Проектов/deployment_and_tz_request.md`, корневой `.gitignore`, `TASKS.md` (формулировка №17).
+- **Результат:** приложение без SQLite в основном приложении; локальная разработка — Postgres (например `docker compose up -d db` + uvicorn с `DATABASE_URL` на localhost). Папка `Проект Проектов/duty_app` не менялась (отдельный контур).
+
+### Шаг 72
+- **Задача:** Начать задачу `TASKS.md` №18 (разбиение монолитного `main.py`) без изменения API-контрактов.
+- **Время:** 2026-04-01 12:50 +03:00
+- **Кто исполнил:** orchestrator + backend
+- **Как исполнил:** вынесены настройки в `Проект Проектов/backend/app/config.py`, модели SQLAlchemy в `Проект Проектов/backend/app/models.py`, подключение/сессия/миграции в `Проект Проектов/backend/app/database.py`; в `Проект Проектов/backend/app/main.py` удалены дубли определений и подключены импорты из новых модулей; в `Проект Проектов/backend/alembic/env.py` источником `Base` стал `app.models`, а URL — `app.database.get_database_url`.
+- **Результат:** `main.py` сокращён на слой конфигурации/ORM/DB, поведение API сохранено; проверка прошла (`python -m py_compile`, импорт `app.main`, smoke `Проект Проектов/check_admin_ops.py` — PASS).
+
+### Шаг 73
+- **Задача:** Продолжить задачу `TASKS.md` №18 — вынести Pydantic-схемы из `main.py`.
+- **Время:** 2026-04-01 13:05 +03:00
+- **Кто исполнил:** backend
+- **Как исполнил:** создан модуль `Проект Проектов/backend/app/schemas.py` со всеми request/response моделями (`LoginRequest`, `DailyReportOut`, `DutySwapOut` и др.); в `Проект Проектов/backend/app/main.py` удалены inline-классы `BaseModel` и добавлены импорты из `app.schemas`.
+- **Результат:** `main.py` дополнительно сокращён без изменения контрактов API; проверки `py_compile` и smoke `Проект Проектов/check_admin_ops.py` — PASS.
+
+### Шаг 74
+- **Задача:** Продолжить задачу `TASKS.md` №18 — вынести service/utility блок из `main.py`.
+- **Время:** 2026-04-01 13:15 +03:00
+- **Кто исполнил:** backend
+- **Как исполнил:** создан модуль `Проект Проектов/backend/app/services.py` и перенесены функции генерации инструкции/Word (`build_employee_exit_instruction*`), Excel (`build_report_excel`), export-helpers (`exports_dir`, `safe_export_name_part`, `surname_from_full_name`) и `report_to_out`; в `Проект Проектов/backend/app/main.py` удалены перенесённые реализации и подключены импорты из `app.services`; в endpoint DOCX вынесено формирование `Content-Disposition` через `attachment_content_disposition_docx`.
+- **Результат:** `main.py` дополнительно упрощён, API-контракты сохранены; проверки `py_compile` и smoke `Проект Проектов/check_admin_ops.py` — PASS.
+
+### Шаг 75
+- **Задача:** Завершить `TASKS.md` №18 — роутеры FastAPI и разделение слоёв.
+- **Время:** 2026-04-01 13:35 +03:00
+- **Кто исполнил:** orchestrator + backend + qa
+- **Как исполнил:** добавлены `Проект Проектов/backend/app/security.py`, `Проект Проектов/backend/app/deps.py`, `Проект Проектов/backend/app/duty_slots.py`; в `Проект Проектов/backend/app/services.py` — `EXPORT_FILENAME_RE`, `is_safe_export_filename`; каталог `Проект Проектов/backend/app/routers/` (`auth.py`, `instruction.py`, `admin_users.py`, `duties.py`, `duty_swaps.py`, `reports.py`, `exports.py`, `__init__.py` с `register_routers`); `Проект Проектов/backend/app/main.py` сведён к созданию приложения, middleware, startup и `register_routers(app)`; исправлено отсутствие импорта `db_session` в startup; прогон smoke: `check_admin_ops.py`, `check_login.py`, `check_instruction_tools.py`; обновлён `TASKS.md` (№18 — выполнено).
+- **Результат:** задача №18 закрыта; точка входа компактная, маршруты сгруппированы по модулям; смоки по ключевым API — PASS.
+
+### Шаг 76
+- **Задача:** Перезапуск локальной связки разработки после рефакторинга.
+- **Время:** 2026-04-01 13:40 +03:00
+- **Кто исполнил:** devops
+- **Как исполнил:** освобождены порты 8000/8080; попытка `docker compose up -d db` — `docker` не найден в PATH; запуск `uvicorn` — падение на `run_migrations()` с `psycopg2.OperationalError: connection refused` к `127.0.0.1:5432` (сервер БД на хосте не слушает порт).
+- **Результат:** код и смоки до перезапуска — в порядке; для рабочего старта нужен доступный PostgreSQL по `DATABASE_URL` из `Проект Проектов/.env` (например поднять Postgres через Docker Desktop / установленный сервис), затем снова `uvicorn` и `local_dev_proxy.py`.
+
+### Шаг 77
+- **Задача:** Диагностика 502 при логине через `local_dev_proxy` и улучшение ответа прокси.
+- **Время:** 2026-04-01 14:10 +03:00
+- **Кто исполнил:** orchestrator + backend
+- **Как исполнил:** зафиксировано: 502 при `URLError` в `Проект Проектов/local_dev_proxy.py` означает недоступность backend `127.0.0.1:8000` (часто из-за незапущенного uvicorn или отказа старта из-за PostgreSQL); для путей `/api/*` вместо HTML-страницы ошибки возвращается JSON с пояснением.
+- **Результат:** пользователю проще отличить «backend/БД не подняты» от ошибки логина/пароля (которая даёт 401 уже от API).
+
+### Шаг 78
+- **Задача:** Разнести политику оркестрации: политика vs runbook vs конвенции HANDOFF vs примеры.
+- **Время:** 2026-04-01 (сессия)
+- **Кто исполнил:** orchestrator
+- **Как исполнил:** сокращён `Проект Проектов/subagent-orchestration-policy.md` (ссылки на вынесенное); добавлены `AGENT_WORKFLOW.md`, `docs/handoff-conventions.md`, `docs/examples-orchestration.md`; обновлены `CONTINUE_PROMPT.md`, `HANDOFF.md` (шапка), `TASKS.md` (конвенция **Артефакт:**), `Проект Проектов/agents/README.md` и спецификации techdoc-субагентов.
+- **Результат:** старт чата и формат лога документированы отдельно от абстрактной политики оркестрации.
+
+### Шаг 79
+- **Задача:** Улучшить старт агента: чеклист, проверка контекста, якорь ACTIVE, правила микрошагов.
+- **Время:** 2026-04-01
+- **Кто исполнил:** orchestrator
+- **Как исполнил:** добавлены `START_CHECKLIST.md`, `scripts/check_agent_context.py`; в `HANDOFF.md` — блок **Якорь ACTIVE**; согласованы `CONTINUE_PROMPT.md`, `AGENT_WORKFLOW.md`, `docs/handoff-conventions.md`, `Проект Проектов/subagent-orchestration-policy.md` (логический шаг vs микрошаги); правило создания `HANDOFF.md` при отсутствии файла.
+- **Результат:** единый чеклист и опциональная самопроверка; меньше неоднозначности по логированию; ACTIVE для быстрого фокуса.
 

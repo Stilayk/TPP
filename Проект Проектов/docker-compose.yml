@@ -1,13 +1,34 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-duty}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-duty}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     env_file:
       - .env
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       PORT: 8000
-      DATABASE_PATH: /data/app.sqlite
+      # Внутри сети compose хост БД — `db`, не 127.0.0.1 из .env разработчика.
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-duty}
       EXPORTS_DIR: /exports
       # CORS не обязателен, если фронт отдаёт nginx с того же origin.
       CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-}
@@ -18,7 +39,6 @@ services:
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       BOOTSTRAP_ADMIN_FULLNAME: ${BOOTSTRAP_ADMIN_FULLNAME:-}
     volumes:
-      - ./data:/data
       - ./exports:/exports
     healthcheck:
       test:
@@ -45,3 +65,5 @@ services:
       - "80:80"
     restart: unless-stopped
 
+volumes:
+  pgdata:

@@ -9,5 +9,5 @@ __pycache__/
 dist/
 build/
 
-# Локальные SQLite (данные среды, не коммитить)
-**/backend/data/*.sqlite
+# Локальные артефакты данных (если появятся)
+**/backend/data/*

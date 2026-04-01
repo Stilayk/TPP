@@ -8,7 +8,11 @@
 
 ### Подготовка
 1. Перейти в папку проекта `Проект Проектов`.
-2. Создать файл `.env` (если отсутствует) и при необходимости указать секрет:
+2. Создать файл `.env` (если отсутствует) и указать секреты:
+   - `SESSION_SECRET=...` (обязательно для сессий).
+   - `BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_PASSWORD`, `BOOTSTRAP_ADMIN_FULLNAME` (обязательно при пустой БД).
+   - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` (опционально; по умолчанию в compose — `app` / `app` / `duty`). Если пароль содержит спецсимволы, закодируйте его в `DATABASE_URL` или упростите пароль для dev.
+   - **`DATABASE_URL` обязателен для backend вне docker-compose** (локальный `uvicorn`): строка к PostgreSQL, например `postgresql+psycopg://app:app@127.0.0.1:5432/duty`. В `docker-compose.yml` для сервиса `backend` URL к БД задаётся автоматически (хост `db`).
    - `N8N_WEBHOOK_URL=https://...` (опционально; для webhook-уведомлений).
 
 ### Запуск
@@ -24,16 +28,23 @@
 - Пересборка после изменений: `docker compose up -d --build`
 
 ### Данные и файлы
-- SQLite хранится в `./data/app.sqlite` (volume `./data:/data`).
+- **PostgreSQL:** данные в томе `pgdata`; порт `5432` проброшен на хост (`POSTGRES_PORT`), чтобы с хоста можно было подключаться к той же БД при локальном `uvicorn`.
+- Миграции схемы выполняет **Alembic** при старте backend (`alembic upgrade head` или `stamp head`, если таблицы уже есть без `alembic_version`).
 - Excel-экспорты хранятся в `./exports` (volume `./exports:/exports`).
 
-## 2) Локальный режим разработки (без Docker)
+### Перенос со старого SQLite (архивные инсталляции)
+1. Остановить приложение, сделать резервную копию файла SQLite и целевой PostgreSQL.
+2. Поднять PostgreSQL с пустой БД и задать `DATABASE_URL`.
+3. Выполнить `alembic upgrade head` из каталога `Проект Проектов/backend` (или дождаться первого старта приложения).
+4. Перенести данные из SQLite в PostgreSQL (dump/CSV, `pgloader` и т.п.) — согласовать с администратором БД.
 
-1. Запустить backend на `127.0.0.1:8000`.
-2. В корне проекта `Проект Проектов` запустить прокси:
-   - `python local_dev_proxy.py`
-3. Открыть:
-   - [http://127.0.0.1:8080](http://127.0.0.1:8080)
+## 2) Локальный режим разработки (uvicorn на хосте, PostgreSQL в Docker)
+
+1. В каталоге `Проект Проектов` поднять только БД: `docker compose up -d db` (порт `5432` на localhost).
+2. В `.env` задать `DATABASE_URL=postgresql+psycopg://app:app@127.0.0.1:5432/duty` (логин/пароль/БД должны совпадать с `POSTGRES_*` в compose).
+3. Запустить backend на `127.0.0.1:8000` из `Проект Проектов/backend` с переменными из `.env` (в т.ч. `SESSION_SECRET`, bootstrap admin).
+4. Запустить прокси: `python local_dev_proxy.py`.
+5. Открыть [http://127.0.0.1:8080](http://127.0.0.1:8080).
 
 ## 3) Чек-лист запроса формального ТЗ
 
