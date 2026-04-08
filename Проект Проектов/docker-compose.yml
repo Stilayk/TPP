@@ -1,3 +1,4 @@
+# Полный стек: PostgreSQL + FastAPI + nginx (статика frontend/). Запуск: docker compose up -d --build
 services:
   db:
     image: postgres:16-alpine
@@ -40,18 +41,17 @@ services:
       BOOTSTRAP_ADMIN_FULLNAME: ${BOOTSTRAP_ADMIN_FULLNAME:-}
     volumes:
       - ./exports:/exports
+    # CMD-SHELL: надёжно и в Docker, и в Podman (exec-форма с python -c и запятыми в Podman давала SyntaxError).
     healthcheck:
       test:
         [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')",
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')\"",
         ]
       interval: 30s
       timeout: 5s
-      retries: 3
-      start_period: 15s
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
 
   nginx:
@@ -62,7 +62,7 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "80:80"
+      - "${HTTP_PORT:-80}:80"
     restart: unless-stopped
 
 volumes:
