@@ -13,4 +13,4 @@ build/
 **/backend/data/*
 
 # Секреты окружения (шаблон — .env.example)
-Проект Проектов/.env
+ProjectTP/.env

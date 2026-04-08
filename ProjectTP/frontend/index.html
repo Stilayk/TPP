@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- При деплое в подпапку добавьте: <meta name="api-base" content="/имя_подпапки" /> -->
+    <title>Техподдержка</title>
+    <link rel="stylesheet" href="./styles.css?v=20260408-11" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="brand">Техподдержка</div>
+        <button id="employeeExitOpenBtn" type="button" class="btn">Выход сотрудника</button>
+      </div>
+      <div class="topbar-right">
+        <div class="me-block">
+          <div id="meText" class="me-text"></div>
+        </div>
+        <button id="logoutBtn" class="btn danger" type="button">Выйти</button>
+      </div>
+    </header>
+
+    <main class="container">
+      <div id="indexError" class="msg error" role="alert" hidden></div>
+
+      <div class="tabs" role="tablist" aria-label="Разделы">
+        <button class="tab-btn active" data-tab="graph" role="tab" aria-selected="true" type="button">График</button>
+        <button class="tab-btn" data-tab="reports" role="tab" aria-selected="false" type="button">Отчеты</button>
+        <button class="tab-btn" data-tab="settings" role="tab" aria-selected="false" type="button">Настройки</button>
+        <button id="adminTabBtn" class="tab-btn" data-tab="admin" role="tab" aria-selected="false" type="button" hidden>Админ</button>
+      </div>
+
+      <section class="tab-panel active" id="tab-graph" role="tabpanel" aria-label="График дежурств">
+        <div class="section">
+          <h2>График дежурств</h2>
+
+          <div class="toolbar">
+            <div class="field inline">
+              <label for="dutiesDate">Дата</label>
+              <input id="dutiesDate" type="date" />
+            </div>
+            <button id="loadDutiesBtn" class="btn admin-only" type="button" hidden>Обновить</button>
+          </div>
+          <p class="muted support-only" hidden>График подгружается при выборе даты.</p>
+
+          <div id="dutiesMsg" class="msg info" hidden></div>
+
+          <div id="currentDutyNow" class="now-duty" aria-live="polite">
+            <strong>Сейчас дежурит:</strong>
+            <span id="currentDutyName">—</span>
+            <span class="muted"> · слот: <span id="currentDutyTime">—</span></span>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table" id="dutiesTable">
+              <thead>
+                <tr>
+                  <th>Дежурство</th>
+                  <th class="col-employee">Сотрудник</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="actions admin-only" hidden>
+            <button id="saveDutiesBtn" class="btn primary" type="button">Сохранить правки графика</button>
+          </div>
+
+          <div class="card support-only" id="swapCard" hidden>
+            <h3>Запрос на обмен дежурствами</h3>
+            <div class="toolbar">
+              <div class="field inline">
+                <label for="swapDate">Дата</label>
+                <input id="swapDate" type="date" />
+              </div>
+              <div class="field inline">
+                <label for="swapFromSlot">Мой слот</label>
+                <select id="swapFromSlot"></select>
+              </div>
+              <div class="field inline">
+                <label for="swapToSlot">Слот коллеги</label>
+                <select id="swapToSlot"></select>
+              </div>
+              <button id="sendSwapBtn" class="btn" type="button">Отправить запрос</button>
+            </div>
+            <div id="swapMsg" class="msg info" hidden></div>
+            <div class="muted">Входящие запросы</div>
+            <div id="swapInboxList" class="reports-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-reports" role="tabpanel" aria-label="Отчеты">
+        <div class="section">
+          <h2>Отчеты</h2>
+
+          <div class="toolbar">
+            <div class="field inline">
+              <label for="reportsDate">Дата</label>
+              <input id="reportsDate" type="date" />
+            </div>
+
+            <div id="reportsEmployeeRow" class="field inline admin-only" hidden>
+              <label for="reportsEmployeeSelect">Сотрудник</label>
+              <select id="reportsEmployeeSelect"></select>
+            </div>
+
+            <button id="loadReportsBtn" class="btn admin-only" type="button" hidden>Обновить</button>
+            <button id="downloadAllExcelsBtn" class="btn admin-only" type="button" hidden>Скачать все Excel</button>
+          </div>
+          <p class="muted support-only" hidden>Отображаются ваши отчёты за выбранную дату; список обновляется при смене даты.</p>
+
+          <div id="reportsMsg" class="msg info" hidden></div>
+
+          <div id="reportsList" class="reports-list"></div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-admin" role="tabpanel" aria-label="Админ">
+        <div class="section">
+          <h2>Админ</h2>
+
+          <div class="card">
+            <h3>Генерация графика</h3>
+            <div class="toolbar">
+              <div class="field inline">
+                <label for="genStartDate">Начало</label>
+                <input id="genStartDate" type="date" />
+              </div>
+              <div class="field inline">
+                <label for="genEndDate">Конец</label>
+                <input id="genEndDate" type="date" />
+              </div>
+              <div class="field inline checkbox">
+                <label class="checkbox-label">
+                  <input id="genOverwrite" type="checkbox" />
+                  Перезаписать существующие
+                </label>
+              </div>
+              <button id="genDutiesBtn" class="btn primary" type="button">Сгенерировать дежурства</button>
+            </div>
+            <div id="genDutiesMsg" class="msg info" hidden></div>
+            <div id="genDutiesResult" class="muted"></div>
+          </div>
+
+          <div class="card">
+            <h3>Сотрудники</h3>
+            <div class="toolbar">
+              <div class="field">
+                <label for="newUserUsername">Логин</label>
+                <input id="newUserUsername" type="text" />
+              </div>
+              <div class="field">
+                <label for="newUserFullName">ФИО</label>
+                <input id="newUserFullName" type="text" />
+              </div>
+              <div class="field">
+                <label for="newUserPassword">Пароль</label>
+                <input id="newUserPassword" type="password" />
+              </div>
+            </div>
+            <div class="actions">
+              <button id="createUserBtn" class="btn" type="button">Добавить сотрудника</button>
+              <button id="refreshUsersEditorBtn" class="btn" type="button">Обновить список</button>
+            </div>
+            <div id="createUserMsg" class="msg info" hidden></div>
+
+            <p class="muted">
+              <strong>Права администратора</strong> — включите флажок у пользователя, чтобы у него появилась вкладка «Админ». Снимите флажок, чтобы вернуть роль сотрудника. Изначального администратора (первая учётная запись из настроек сервера) нельзя лишить прав; должен остаться хотя бы один администратор.
+            </p>
+            <div class="table-wrap">
+              <table class="table" id="adminUsersEditorTable">
+                <thead>
+                  <tr>
+                    <th style="width: 80px;">ID</th>
+                    <th>Логин</th>
+                    <th>ФИО</th>
+                    <th style="width: 140px;">Права администратора</th>
+                    <th style="width: 160px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="adminUsersEditorBody"></tbody>
+              </table>
+            </div>
+            <div class="actions">
+              <button id="refreshRoleAuditBtn" class="btn" type="button">Обновить журнал назначений</button>
+            </div>
+            <pre id="roleAuditPre" class="role-audit-pre muted" hidden></pre>
+            <div id="adminRoleMsg" class="msg info" hidden></div>
+
+            <hr />
+            <h4>Управление сотрудником</h4>
+            <div class="toolbar">
+              <div class="field inline">
+                <label for="adminUserSelect">Сотрудник</label>
+                <select id="adminUserSelect"></select>
+              </div>
+              <div class="field inline checkbox">
+                <label class="checkbox-label">
+                  <input id="adminDutyActiveToggle" type="checkbox" />
+                  Участвует в генерации дежурств
+                </label>
+              </div>
+              <div class="field">
+                <label for="adminNewPassword">Новый пароль</label>
+                <input id="adminNewPassword" type="password" />
+              </div>
+            </div>
+            <div class="actions">
+              <button id="adminSaveDutyStatusBtn" class="btn" type="button">Сохранить статус дежурств</button>
+              <button id="adminChangePasswordBtn" class="btn" type="button">Сменить пароль</button>
+              <button id="adminDeleteReportsBtn" class="btn" type="button">Удалить историю отчетов</button>
+              <button id="adminDeleteUserBtn" class="btn danger" type="button">Удалить пользователя</button>
+            </div>
+            <div id="adminOpsMsg" class="msg info" hidden></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-settings" role="tabpanel" aria-label="Настройки пользователя">
+        <div class="section">
+          <h2>Настройки пользователя</h2>
+
+          <div class="card">
+            <h3>Профиль</h3>
+            <div class="toolbar">
+              <div class="field">
+                <label for="selfFullName">ФИО</label>
+                <input id="selfFullName" type="text" />
+              </div>
+            </div>
+            <div class="actions">
+              <button id="selfSaveProfileBtn" class="btn" type="button">Сохранить профиль</button>
+            </div>
+            <div id="selfProfileMsg" class="msg info" hidden></div>
+          </div>
+
+          <div class="card">
+            <h3>Смена пароля</h3>
+            <div class="toolbar">
+              <div class="field">
+                <label for="selfOldPassword">Текущий пароль</label>
+                <input id="selfOldPassword" type="password" />
+              </div>
+              <div class="field">
+                <label for="selfNewPassword">Новый пароль</label>
+                <input id="selfNewPassword" type="password" />
+              </div>
+              <div class="field">
+                <label for="selfNewPassword2">Повтор нового пароля</label>
+                <input id="selfNewPassword2" type="password" />
+              </div>
+            </div>
+            <div class="actions">
+              <button id="selfChangePasswordBtn" class="btn" type="button">Сменить пароль</button>
+            </div>
+            <div id="selfChangePasswordMsg" class="msg info" hidden></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="employeeExitModal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="employeeExitTitle">
+      <div class="modal-card">
+        <h3 id="employeeExitTitle">Инструкция при выходе сотрудника</h3>
+        <p class="muted">Введите данные сотрудника для подстановки в текст письма.</p>
+        <div class="field">
+          <label for="eeFio">ФИО сотрудника</label>
+          <input id="eeFio" type="text" autocomplete="name" />
+        </div>
+        <div class="field">
+          <label for="eeLogin">Логин</label>
+          <input id="eeLogin" type="text" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="eePassword">Пароль (временный)</label>
+          <input id="eePassword" type="password" autocomplete="new-password" />
+        </div>
+        <div class="field">
+          <label for="eeDomain">Домен</label>
+          <input id="eeDomain" type="text" autocomplete="off" placeholder="например rz" />
+        </div>
+        <div class="actions">
+          <button id="employeeExitGenerateBtn" type="button" class="btn primary">Сформировать инструкцию</button>
+          <button id="employeeExitDownloadBtn" type="button" class="btn">Скачать Word (.docx)</button>
+          <button id="employeeExitCopyBtn" type="button" class="btn">Копировать</button>
+          <button id="employeeExitCloseBtn" type="button" class="btn">Закрыть</button>
+        </div>
+        <div class="field">
+          <label for="eeOutput">Текст инструкции</label>
+          <textarea id="eeOutput" rows="14" readonly class="instruction-tools-output"></textarea>
+        </div>
+        <div id="employeeExitMsg" class="msg info" hidden></div>
+      </div>
+    </div>
+
+    <script src="./app.js?v=20260408-11" defer></script>
+  </body>
+</html>
+

@@ -3,7 +3,7 @@
 ## Назначение
 Этот файл — единая точка передачи контекста для субагентов, чтобы продолжать работу без повторного чтения всего чата.
 
-**Связанные документы:** чеклист старта — `START_CHECKLIST.md`; формат шага, ACTIVE, микрошаги — `docs/handoff-conventions.md`; старт чата, обзор, DoR/DoD — `AGENT_WORKFLOW.md`; политика оркестрации — `Проект Проектов/subagent-orchestration-policy.md`; проверка контекста — `python scripts/check_agent_context.py`.
+**Связанные документы:** чеклист старта — `START_CHECKLIST.md`; формат шага, ACTIVE, микрошаги — `docs/handoff-conventions.md`; старт чата, обзор, DoR/DoD — `AGENT_WORKFLOW.md`; политика оркестрации — `ProjectTP/subagent-orchestration-policy.md`; проверка контекста — `python scripts/check_agent_context.py`.
 
 ## Правила обновления (обязательно)
 - Записи в **Лог шагов** — по правилам **логического шага** и **микрошагов** в `docs/handoff-conventions.md` (не обязательно после каждой мелкой правки).
@@ -16,7 +16,7 @@
 - Смену статуса задачи и следующего шага фиксировать в **Лог шагов** (и при необходимости в `TASKS.md`); блоки **Текущий статус задачи** и **Следующий шаг** не переписывать без договорённости с пользователем (см. `CONTINUE_PROMPT.md`). Строку **ACTIVE** в блоке ниже **можно** обновлять при смене фокуса.
 
 ## Якорь ACTIVE
-- **ACTIVE:** P1 №19–21 закрыты документацией (2026-04-08); дальше — проверка на реальном сервере по желанию команды и QA админки (P1 №1) по блоку **Следующий шаг** ниже.
+- **ACTIVE:** P2 №31 закрыт (2026-04-08); следующая по приоритету — **№22** (Битрикс, по согласованию) / **№27** (пауза) и т.д.
 
 ## Роли субагентов
 - `orchestrator`: декомпозирует работу, назначает следующего исполнителя, снимает блокеры.
@@ -164,14 +164,14 @@
 - **Задача:** Усилить переносимость контекста между чатами.
 - **Время:** 2026-03-31 15:43 +03:00
 - **Кто исполнил:** orchestrator + generalPurpose subagent
-- **Как исполнил:** добавил обязательный startup-протокол в `Проект Проектов/subagent-orchestration-policy.md` (чтение `HANDOFF.md`/`TASKS.md`/policy перед стартом) и создал `CONTINUE_PROMPT.md` (корень репозитория) с готовым шаблоном команды для нового чата.
+- **Как исполнил:** добавил обязательный startup-протокол в `ProjectTP/subagent-orchestration-policy.md` (чтение `HANDOFF.md`/`TASKS.md`/policy перед стартом) и создал `CONTINUE_PROMPT.md` (корень репозитория) с готовым шаблоном команды для нового чата.
 - **Результат:** правила продолжения работы формализованы и закреплены в файлах проекта.
 
 ### Шаг 19
 - **Задача:** Добавить правило обязательного обзорного сабагента при старте.
 - **Время:** 2026-03-31 15:47 +03:00
 - **Кто исполнил:** orchestrator + generalPurpose subagent
-- **Как исполнил:** обновил `Проект Проектов/subagent-orchestration-policy.md` (раздел 6.0 про предстартовый обзор всего проекта, запрет старта реализации без него, обновленный DoR) и `CONTINUE_PROMPT.md` (корень репозитория; пункт 0 с запуском обзорного агента).
+- **Как исполнил:** обновил `ProjectTP/subagent-orchestration-policy.md` (раздел 6.0 про предстартовый обзор всего проекта, запрет старта реализации без него, обновленный DoR) и `CONTINUE_PROMPT.md` (корень репозитория; пункт 0 с запуском обзорного агента).
 - **Результат:** теперь в новом чате сначала запускается агент обзора проекта, затем выполняется стандартный порядок чтения `HANDOFF.md`/`TASKS.md`/policy.
 
 ### Шаг 20
@@ -227,14 +227,14 @@
 - **Задача:** Выполнить `P1 №14` (анализ справедливости генерации дежурств).
 - **Время:** 2026-03-31 16:10 +03:00
 - **Кто исполнил:** orchestrator + backend
-- **Как исполнил:** проанализировал код генератора в `backend/app/main.py`, описал алгоритм и ограничения в `Проект Проектов/duty_generation_fairness.md`, добавил воспроизводимый smoke `check_generation_fairness.py`, проверил синтаксис скрипта.
+- **Как исполнил:** проанализировал код генератора в `backend/app/main.py`, описал алгоритм и ограничения в `ProjectTP/duty_generation_fairness.md`, добавил воспроизводимый smoke `check_generation_fairness.py`, проверил синтаксис скрипта.
 - **Результат:** задача №14 закрыта: fairness-логика задокументирована, пример проверки готов к запуску (`fairness_ok: delta <= 1`).
 
 ### Шаг 28
 - **Задача:** Ввести правило обязательной отметки завершенных задач.
 - **Время:** 2026-03-31 16:14 +03:00
 - **Кто исполнил:** orchestrator
-- **Как исполнил:** обновил `Проект Проектов/subagent-orchestration-policy.md` (startup-протокол и список запретов), добавил требование помечать закрытую задачу в `TASKS.md` и синхронно обновлять `HANDOFF.md`.
+- **Как исполнил:** обновил `ProjectTP/subagent-orchestration-policy.md` (startup-протокол и список запретов), добавил требование помечать закрытую задачу в `TASKS.md` и синхронно обновлять `HANDOFF.md`.
 - **Результат:** статус завершения теперь обязателен в обоих артефактах (`TASKS.md` + `HANDOFF.md`).
 
 ### Шаг 29
@@ -262,7 +262,7 @@
 - **Задача:** Выполнить `P1 №15` (аудит хранения паролей и Excel).
 - **Время:** 2026-03-31 16:31 +03:00
 - **Кто исполнил:** orchestrator + qa
-- **Как исполнил:** проверил хранение паролей в SQLite (хеши bcrypt), повторно прогнал `Проект Проектов/check_excel_flow.py`, зафиксировал выводы в `Проект Проектов/security_audit_passwords_excel.md`; статус задачи отмечен как завершенный в `TASKS.md`.
+- **Как исполнил:** проверил хранение паролей в SQLite (хеши bcrypt), повторно прогнал `ProjectTP/check_excel_flow.py`, зафиксировал выводы в `ProjectTP/security_audit_passwords_excel.md`; статус задачи отмечен как завершенный в `TASKS.md`.
 - **Результат:** критерий `P1 №15` закрыт, дополнительных кодовых изменений по итогам аудита не требуется.
 
 ### Шаг 33
@@ -290,7 +290,7 @@
 - **Задача:** Реализовать `P2 №6` (n8n: уведомление за 2 минуты до дежурства).
 - **Время:** 2026-03-31 17:12 +03:00
 - **Кто исполнил:** backend + devops
-- **Как исполнил:** в `backend/app/main.py` добавил endpoint `POST /api/admin/notifications/duty-upcoming/dispatch` и env-конфигурацию `N8N_WEBHOOK_URL`; в `Проект Проектов/docker-compose.yml` добавил прокидывание `N8N_WEBHOOK_URL` через `.env`; добавил `Проект Проектов/n8n_notification_workflow.md`.
+- **Как исполнил:** в `backend/app/main.py` добавил endpoint `POST /api/admin/notifications/duty-upcoming/dispatch` и env-конфигурацию `N8N_WEBHOOK_URL`; в `ProjectTP/docker-compose.yml` добавил прокидывание `N8N_WEBHOOK_URL` через `.env`; добавил `ProjectTP/n8n_notification_workflow.md`.
 - **Результат:** backend готов отправлять webhook-событие `duty_upcoming_2m` в n8n workflow.
 
 ### Шаг 37
@@ -346,7 +346,7 @@
 - **Задача:** Выполнить `P2 №10` (блокировка Push и чек-лист разблокировки).
 - **Время:** 2026-03-31 17:39 +03:00
 - **Кто исполнил:** orchestrator
-- **Как исполнил:** подготовил документ `Проект Проектов/push_unblock_checklist.md` с причинами блокировок, быстрой диагностикой, чек-листами для Chrome/Edge/Firefox и шагами эскалации в поддержку; отметил статус задачи в `TASKS.md`.
+- **Как исполнил:** подготовил документ `ProjectTP/push_unblock_checklist.md` с причинами блокировок, быстрой диагностикой, чек-листами для Chrome/Edge/Firefox и шагами эскалации в поддержку; отметил статус задачи в `TASKS.md`.
 - **Результат:** критерий готовности `P2 №10` выполнен: причины задокументированы, чек-лист готов для публикации сотрудникам.
 
 ### Шаг 45
@@ -374,7 +374,7 @@
 - **Задача:** Выполнить `P2 №16` (инструкция по развертыванию и запрос ТЗ).
 - **Время:** 2026-03-31 17:55 +03:00
 - **Кто исполнил:** devops + orchestrator
-- **Как исполнил:** добавил документ `Проект Проектов/deployment_and_tz_request.md` с минимальной воспроизводимой инструкцией деплоя (Docker Compose и локальный режим), перечнем эксплуатационных проверок и шаблоном запроса формального ТЗ; синхронизировал статус задачи в `TASKS.md`.
+- **Как исполнил:** добавил документ `ProjectTP/deployment_and_tz_request.md` с минимальной воспроизводимой инструкцией деплоя (Docker Compose и локальный режим), перечнем эксплуатационных проверок и шаблоном запроса формального ТЗ; синхронизировал статус задачи в `TASKS.md`.
 - **Результат:** критерий `P2 №16` закрыт: готова практическая инструкция развертывания и готовый чек-лист/шаблон запроса ТЗ.
 
 ### Шаг 49
@@ -417,56 +417,56 @@
 - **Задача:** Зафиксировать путь к артефакту `P2 №10` и правило ссылок на новые файлы.
 - **Время:** 2026-03-31 18:32 +03:00
 - **Кто исполнил:** orchestrator
-- **Как исполнил:** по запросу пользователя указал: документ по задаче `P2 №10` — `Проект Проектов/push_unblock_checklist.md` (создание и содержание уже отражены в `Шаг 44`); в `TASKS.md` у пункта `№10` добавлена строка **Артефакт** с тем же относительным путём.
+- **Как исполнил:** по запросу пользователя указал: документ по задаче `P2 №10` — `ProjectTP/push_unblock_checklist.md` (создание и содержание уже отражены в `Шаг 44`); в `TASKS.md` у пункта `№10` добавлена строка **Артефакт** с тем же относительным путём.
 - **Результат:** путь к чек-листу виден в `TASKS.md` и дублирует запись в логе `Шаг 44`; при появлении новых файлов по задачам — дописывать в конец `HANDOFF.md` путь и имя файла.
 
 ### Шаг 55
 - **Задача:** Зафиксировать в политике требование указывать пути к новым файлам в шагах `HANDOFF.md` и свести реестр артефактов из лога.
 - **Время:** 2026-03-31 18:36 +03:00
 - **Кто исполнил:** orchestrator
-- **Как исполнил:** обновил `Проект Проектов/subagent-orchestration-policy.md` (раздел 5.3: при создании файла — относительный путь от корня репозитория в том же шаге); обновил `CONTINUE_PROMPT.md` (ссылка на 5.3); в `TASKS.md` у `P2 №16` добавлена строка **Артефакт** с путём к инструкции деплоя; перепроверил лог: **файлы, которые есть в репозитории:** `CONTINUE_PROMPT.md` (корень, шаг 18), `Проект Проектов/push_unblock_checklist.md` (шаг 44), `Проект Проектов/deployment_and_tz_request.md` (шаг 48). **В логе упомянуты без полного пути, в текущей копии не найдены** (ожидаемое расположение по смыслу задач — `Проект Проектов/`): `duty_generation_fairness.md` (шаг 27), `security_audit_passwords_excel.md` (шаг 32), `n8n_notification_workflow.md` (шаг 36) — при необходимости восстановить из истории или пересоздать.
+- **Как исполнил:** обновил `ProjectTP/subagent-orchestration-policy.md` (раздел 5.3: при создании файла — относительный путь от корня репозитория в том же шаге); обновил `CONTINUE_PROMPT.md` (ссылка на 5.3); в `TASKS.md` у `P2 №16` добавлена строка **Артефакт** с путём к инструкции деплоя; перепроверил лог: **файлы, которые есть в репозитории:** `CONTINUE_PROMPT.md` (корень, шаг 18), `ProjectTP/push_unblock_checklist.md` (шаг 44), `ProjectTP/deployment_and_tz_request.md` (шаг 48). **В логе упомянуты без полного пути, в текущей копии не найдены** (ожидаемое расположение по смыслу задач — `ProjectTP/`): `duty_generation_fairness.md` (шаг 27), `security_audit_passwords_excel.md` (шаг 32), `n8n_notification_workflow.md` (шаг 36) — при необходимости восстановить из истории или пересоздать.
 - **Результат:** правила отчёта в `HANDOFF` дополнены; пути к существующим артефактам зафиксированы; для отсутствующих файлов указаны ожидаемые имена и папка.
 
 ### Шаг 56
 - **Задача:** Дописать относительные пути к файлам прямо в текст существующих шагов лога (по запросу пользователя).
 - **Время:** 2026-03-31 18:40 +03:00
 - **Кто исполнил:** orchestrator
-- **Как исполнил:** уточнил в шагах **18** и **19** пути `Проект Проектов/subagent-orchestration-policy.md` и `CONTINUE_PROMPT.md` (корень репозитория); в **шаге 27** — `Проект Проектов/duty_generation_fairness.md`; в **шаге 28** — `Проект Проектов/subagent-orchestration-policy.md`; в **шаге 32** — `Проект Проектов/security_audit_passwords_excel.md`, `Проект Проектов/check_excel_flow.py`; в **шаге 36** — `Проект Проектов/n8n_notification_workflow.md`, `Проект Проектов/docker-compose.yml` (смысл записей не менялся, только дополнены пути).
+- **Как исполнил:** уточнил в шагах **18** и **19** пути `ProjectTP/subagent-orchestration-policy.md` и `CONTINUE_PROMPT.md` (корень репозитория); в **шаге 27** — `ProjectTP/duty_generation_fairness.md`; в **шаге 28** — `ProjectTP/subagent-orchestration-policy.md`; в **шаге 32** — `ProjectTP/security_audit_passwords_excel.md`, `ProjectTP/check_excel_flow.py`; в **шаге 36** — `ProjectTP/n8n_notification_workflow.md`, `ProjectTP/docker-compose.yml` (смысл записей не менялся, только дополнены пути).
 - **Результат:** артефакты в перечисленных шагах ссылаются на полные относительные пути от корня репозитория.
 
 ### Шаг 57
 - **Задача:** Восстановить в репозитории отчёт `P1 №15` (файл отсутствовал в git).
 - **Время:** 2026-03-31 18:46 +03:00
 - **Кто исполнил:** orchestrator
-- **Как исполнил:** создан файл `Проект Проектов/security_audit_passwords_excel.md` с выводами аудита по текущему `backend/app/main.py` (bcrypt/passlib, каталог Excel, права на `/exports`); в `TASKS.md` у задачи `№15` добавлена строка **Артефакт** с этим путём.
-- **Результат:** критерий «задокументировано» для `P1 №15` закреплён отдельным файлом в репозитории; путь: `Проект Проектов/security_audit_passwords_excel.md`.
+- **Как исполнил:** создан файл `ProjectTP/security_audit_passwords_excel.md` с выводами аудита по текущему `backend/app/main.py` (bcrypt/passlib, каталог Excel, права на `/exports`); в `TASKS.md` у задачи `№15` добавлена строка **Артефакт** с этим путём.
+- **Результат:** критерий «задокументировано» для `P1 №15` закреплён отдельным файлом в репозитории; путь: `ProjectTP/security_audit_passwords_excel.md`.
 
 ### Шаг 58
 - **Задача:** Синхронизировать формулировки задач с фактом (Excel только admin) и восстановить артефакты `P1 №14` и `P2 №6`.
 - **Время:** 2026-03-31 19:26 +03:00
 - **Кто исполнил:** orchestrator + backend
-- **Как исполнил:** в `TASKS.md` обновлены описание и критерий задачи `P1 №4` (скачивание Excel с сервера — **admin**; support — заполнение/финализация); для `P1 №14` добавлены **Артефакт** и файлы `Проект Проектов/duty_generation_fairness.md`, `Проект Проектов/check_generation_fairness.py`; для `P2 №6` — **Артефакт** `Проект Проектов/n8n_notification_workflow.md` и уточнён критерий (webhook + настройка n8n по инструкции); проверен синтаксис `check_generation_fairness.py` (`py_compile`).
+- **Как исполнил:** в `TASKS.md` обновлены описание и критерий задачи `P1 №4` (скачивание Excel с сервера — **admin**; support — заполнение/финализация); для `P1 №14` добавлены **Артефакт** и файлы `ProjectTP/duty_generation_fairness.md`, `ProjectTP/check_generation_fairness.py`; для `P2 №6` — **Артефакт** `ProjectTP/n8n_notification_workflow.md` и уточнён критерий (webhook + настройка n8n по инструкции); проверен синтаксис `check_generation_fairness.py` (`py_compile`).
 - **Результат:** формулировки задач согласованы с API; недостающие документы и smoke для справедливости генерации и n8n добавлены в репозиторий.
 
 ### Шаг 59
 - **Задача:** Предстартовый обзор проекта и закрытие `P2 №13` (конструктор инструкции по авторизации в инструментах).
 - **Время:** 2026-03-31 20:05 +03:00
 - **Кто исполнил:** orchestrator + explore subagent
-- **Как исполнил:** запущен обзорный агент по репозиторию (стек, модули, бэклог); реализованы `GET /api/instruction-tools/template` и `POST /api/instruction-tools/generate`, файл шаблона `Проект Проектов/backend/app/instruction_tools_template.json`, UI на вкладке «Настройки», стили в `Проект Проектов/frontend/styles.css`, smoke `Проект Проектов/check_instruction_tools.py`; статус задачи отмечен в `TASKS.md`.
+- **Как исполнил:** запущен обзорный агент по репозиторию (стек, модули, бэклог); реализованы `GET /api/instruction-tools/template` и `POST /api/instruction-tools/generate`, файл шаблона `ProjectTP/backend/app/instruction_tools_template.json`, UI на вкладке «Настройки», стили в `ProjectTP/frontend/styles.css`, smoke `ProjectTP/check_instruction_tools.py`; статус задачи отмечен в `TASKS.md`.
 - **Результат:** пользователь support/admin выбирает инструменты и получает собранный текст; финальные формулировки подставляются заменой JSON после получения шаблона от Агудалина А; smoke на порту 8001: `template: 200 tools 4`, `generate: 200`.
 
 ### Шаг 60
 - **Задача:** Переделать `P2 №13` под сценарий «Выход сотрудника» с подстановкой ФИО/логина/пароля по утверждённому тексту инструкции.
 - **Время:** 2026-03-31 21:00 +03:00
 - **Кто исполнил:** backend + frontend
-- **Как исполнил:** удалены `GET/POST /api/instruction-tools/*` и `Проект Проектов/backend/app/instruction_tools_template.json`; добавлены `build_employee_exit_instruction` и `POST /api/employee-exit/instruction` в `Проект Проектов/backend/app/main.py`; в `Проект Проектов/frontend/index.html` — кнопка «Выход сотрудника» в шапке и модальное окно с полями; обновлены `Проект Проектов/frontend/app.js`, `Проект Проектов/frontend/styles.css`, `Проект Проектов/check_instruction_tools.py`, `TASKS.md`.
+- **Как исполнил:** удалены `GET/POST /api/instruction-tools/*` и `ProjectTP/backend/app/instruction_tools_template.json`; добавлены `build_employee_exit_instruction` и `POST /api/employee-exit/instruction` в `ProjectTP/backend/app/main.py`; в `ProjectTP/frontend/index.html` — кнопка «Выход сотрудника» в шапке и модальное окно с полями; обновлены `ProjectTP/frontend/app.js`, `ProjectTP/frontend/styles.css`, `ProjectTP/check_instruction_tools.py`, `TASKS.md`.
 - **Результат:** сотрудник support/admin открывает модалку, вводит данные, получает полный текст письма; копирование в буфер из модального окна.
 
 ### Шаг 61
 - **Задача:** Устранить 404 при формировании инструкции и добавить скачивание Word (.docx).
 - **Время:** 2026-03-31 21:20 +03:00
 - **Кто исполнил:** backend + frontend + devops
-- **Как исполнил:** основной путь API переведён на `/api/employee_exit/instruction` (подчёркивания), дублирован маршрут с дефисом; добавлены `POST .../instruction/docx` и генерация через `python-docx` в `Проект Проектов/backend/app/main.py`, зависимость в `Проект Проектов/backend/requirements.txt`; в `Проект Проектов/frontend/app.js` — кнопка «Скачать Word (.docx)» и `fetch` с `blob`; в `Проект Проектов/nginx/default.conf` — `location ^~ /api/`; обновлён `Проект Проектов/check_instruction_tools.py`.
+- **Как исполнил:** основной путь API переведён на `/api/employee_exit/instruction` (подчёркивания), дублирован маршрут с дефисом; добавлены `POST .../instruction/docx` и генерация через `python-docx` в `ProjectTP/backend/app/main.py`, зависимость в `ProjectTP/backend/requirements.txt`; в `ProjectTP/frontend/app.js` — кнопка «Скачать Word (.docx)» и `fetch` с `blob`; в `ProjectTP/nginx/default.conf` — `location ^~ /api/`; обновлён `ProjectTP/check_instruction_tools.py`.
 - **Результат:** JSON и DOCX отдаются по новым путям; после пересборки образа backend нужен `docker compose build backend` из-за новой зависимости.
 
 ### Шаг 62
@@ -480,28 +480,28 @@
 - **Задача:** Перезапуск локальных процессов разработки (без Docker) из-за устаревшего backend на порту 8000 и 404 на `/api/ee_instruction`.
 - **Время:** 2026-03-31 21:30 +03:00
 - **Кто исполнил:** orchestrator
-- **Как исполнил:** остановлены слушатели портов 8000/8080/8001/8002/8010; заново запущены `uvicorn app.main:app` в `Проект Проектов/backend` и `Проект Проектов/local_dev_proxy.py`; проверка `GET /api/ee_instruction/ping` на 8000 и через proxy 8080 — `200`, JSON `ok`.
+- **Как исполнил:** остановлены слушатели портов 8000/8080/8001/8002/8010; заново запущены `uvicorn app.main:app` в `ProjectTP/backend` и `ProjectTP/local_dev_proxy.py`; проверка `GET /api/ee_instruction/ping` на 8000 и через proxy 8080 — `200`, JSON `ok`.
 - **Результат:** для UI с API нужно открывать `http://127.0.0.1:8080/index.html` (proxy), а не сырой порт 8000 без статики.
 
 ### Шаг 64
 - **Задача:** Добавить в инструкцию выхода сотрудника блок про домен и поле ввода домена в UI.
 - **Время:** 2026-03-31 22:10 +03:00
 - **Кто исполнил:** backend + frontend
-- **Как исполнил:** в `EmployeeExitInstructionRequest` добавлено поле `domain`; в `build_employee_exit_instruction` после строки про логин/пароль добавлены строки «Ваш домен — …» и «Пример учётной записи в формате домена: домен\логин»; строка про ZOOM использует тот же пример; в `frontend/index.html` и `frontend/app.js` — поле «Домен» и передача в API; обновлён `Проект Проектов/check_instruction_tools.py`.
+- **Как исполнил:** в `EmployeeExitInstructionRequest` добавлено поле `domain`; в `build_employee_exit_instruction` после строки про логин/пароль добавлены строки «Ваш домен — …» и «Пример учётной записи в формате домена: домен\логин»; строка про ZOOM использует тот же пример; в `frontend/index.html` и `frontend/app.js` — поле «Домен» и передача в API; обновлён `ProjectTP/check_instruction_tools.py`.
 - **Результат:** сотрудник вводит домен (например `rz`); в тексте и DOCX подставляются домен и пример `домен\логин`.
 
 ### Шаг 65
 - **Задача:** В тексте инструкции явно выводить пример учётной записи как `{domain}\{login}` в шаблоне строки.
 - **Время:** 2026-03-31 22:25 +03:00
 - **Кто исполнил:** backend
-- **Как исполнил:** в `Проект Проектов/backend/app/main.py` в `build_employee_exit_instruction` строка «Пример учётной записи…» переведена на `f"... {domain}\\{login}..."` вместо отдельной переменной; та же подстановка в абзаце про ZOOM; удалена промежуточная переменная `domain_login_example`.
+- **Как исполнил:** в `ProjectTP/backend/app/main.py` в `build_employee_exit_instruction` строка «Пример учётной записи…» переведена на `f"... {domain}\\{login}..."` вместо отдельной переменной; та же подстановка в абзаце про ZOOM; удалена промежуточная переменная `domain_login_example`.
 - **Результат:** в сгенерированном тексте формат домена и логина задаётся напрямую в f-строке.
 
 ### Шаг 66
 - **Задача:** Перезапуск локальной связки разработки (uvicorn + `local_dev_proxy`).
 - **Время:** 2026-03-31 22:40 +03:00
 - **Кто исполнил:** orchestrator
-- **Как исполнил:** остановлены процессы на портах 8000 и 8080; заново запущены `python -m uvicorn app.main:app --host 127.0.0.1 --port 8000` из `Проект Проектов/backend` с переменными из `.env` (bootstrap admin, `SESSION_SECRET`); запущен `Проект Проектов/local_dev_proxy.py` (8080 → 8000 для `/api` и `/exports`).
+- **Как исполнил:** остановлены процессы на портах 8000 и 8080; заново запущены `python -m uvicorn app.main:app --host 127.0.0.1 --port 8000` из `ProjectTP/backend` с переменными из `.env` (bootstrap admin, `SESSION_SECRET`); запущен `ProjectTP/local_dev_proxy.py` (8080 → 8000 для `/api` и `/exports`).
 - **Результат:** UI: `http://127.0.0.1:8080/`; проверка `GET /api/health` и `GET /api/ee_instruction/ping` через proxy — OK.
 
 ### Примечание (процесс)
@@ -511,63 +511,63 @@
 - **Задача:** Предстартовый обзор проекта (CONTINUE_PROMPT) и создание новой задачи в бэклоге.
 - **Время:** 2026-03-31 23:20 +03:00
 - **Кто исполнил:** orchestrator + explore subagent
-- **Как исполнил:** запущен обзор репозитория «Проект Проектов»: веб-приложение дежурств/отчётов/Excel и инструкции выхода сотрудника; стек FastAPI+SQLite+статический фронт, Docker Compose+n8n опционально; ключевой файл — `Проект Проектов/backend/app/main.py`; отмечены пробелы: монолит, без миграций, слабый README, нет полноценного CI. В `TASKS.md` в раздел **Бэклог** добавлена задача **№17** (Alembic + разбиение `main.py`, P2, статус «В очереди»).
+- **Как исполнил:** запущен обзор репозитория «ProjectTP»: веб-приложение дежурств/отчётов/Excel и инструкции выхода сотрудника; стек FastAPI+SQLite+статический фронт, Docker Compose+n8n опционально; ключевой файл — `ProjectTP/backend/app/main.py`; отмечены пробелы: монолит, без миграций, слабый README, нет полноценного CI. В `TASKS.md` в раздел **Бэклог** добавлена задача **№17** (Alembic + разбиение `main.py`, P2, статус «В очереди»).
 - **Результат:** зафиксировано текущее состояние стека и модулей; следующая приоритетная работа для сабагентов — `TASKS.md`, задача **№17** (путь к списку задач: `TASKS.md` в корне репозитория).
 
 ### Шаг 68
 - **Задача:** Устранить нарушение правил `HANDOFF.md` и технические долги (импорт `Request`, артефакты `.pyc`).
 - **Время:** 2026-03-31 23:55 +03:00
 - **Кто исполнил:** orchestrator
-- **Как исполнил:** блоки **Текущий статус задачи** и **Следующий шаг** возвращены к состоянию до ошибочной перезаписи (соответствие `CONTINUE_PROMPT.md`: дальше — только новые шаги в логе); в правилах обновления убрана отсылка к правке этих блоков вместо лога; в `Проект Проектов/backend/app/main.py` для n8n webhook используется `urllib.request.Request` под именем `UrlRequest`, чтобы не затенять `Request` из FastAPI; в корне репозитория добавлен `.gitignore` (`__pycache__/`, `*.py[cod]`), отслеживаемые `.pyc` удалены из индекса git.
+- **Как исполнил:** блоки **Текущий статус задачи** и **Следующий шаг** возвращены к состоянию до ошибочной перезаписи (соответствие `CONTINUE_PROMPT.md`: дальше — только новые шаги в логе); в правилах обновления убрана отсылка к правке этих блоков вместо лога; в `ProjectTP/backend/app/main.py` для n8n webhook используется `urllib.request.Request` под именем `UrlRequest`, чтобы не затенять `Request` из FastAPI; в корне репозитория добавлен `.gitignore` (`__pycache__/`, `*.py[cod]`), отслеживаемые `.pyc` удалены из индекса git.
 - **Результат:** актуальное состояние бэклога и закрытых задач — в `TASKS.md` и в **Лог шагов**; новый файл: `.gitignore` (корень репозитория).
 
 ### Шаг 69
 - **Задача:** Повторная проверка и доведение исправлений (HANDOFF, n8n `UrlRequest`).
 - **Время:** 2026-04-01 12:00 +03:00
 - **Кто исполнил:** orchestrator
-- **Как исполнил:** блоки **Текущий статус задачи** и **Следующий шаг** снова приведены к зафиксированному «замороженному» виду (до ошибочной подмены на TASK №7 / P2 №10); в `Проект Проектов/backend/app/main.py` вызов HTTP-клиента для webhook исправлен с `Request(` на `UrlRequest(` при уже существующем импорте `Request as UrlRequest`.
+- **Как исполнил:** блоки **Текущий статус задачи** и **Следующий шаг** снова приведены к зафиксированному «замороженному» виду (до ошибочной подмены на TASK №7 / P2 №10); в `ProjectTP/backend/app/main.py` вызов HTTP-клиента для webhook исправлен с `Request(` на `UrlRequest(` при уже существующем импорте `Request as UrlRequest`.
 - **Результат:** затенение `urllib.request.Request` устранено на уровне вызова; актуальный бэклог по-прежнему в `TASKS.md` и в логе шагов.
 
 ### Шаг 70
 - **Задача:** Реализовать бэклог `TASKS.md` №17 — PostgreSQL, Alembic, отказ от SQLite-обходов при старте.
 - **Время:** 2026-04-01 10:20 +03:00
 - **Кто исполнил:** orchestrator + backend + devops
-- **Как исполнил:** добавлены `DATABASE_URL` и `get_database_url()` в `Проект Проектов/backend/app/main.py`, `run_migrations()` с `alembic upgrade head` и `stamp head` для старых SQLite без `alembic_version`; удалены `init_db`/`ensure_*` (PRAGMA/sqlite_master); добавлены `Проект Проектов/backend/alembic/`, ревизия `Проект Проектов/backend/alembic/versions/a9ed29c6b953_initial_schema.py`, зависимости в `Проект Проектов/backend/requirements.txt`; в `Проект Проектов/backend/Dockerfile` копируются `alembic` и `alembic.ini`; в `Проект Проектов/docker-compose.yml` — сервис `db` (Postgres), том `pgdata`, `DATABASE_URL` по умолчанию; обновлены `TASKS.md`, `Проект Проектов/deployment_and_tz_request.md`.
+- **Как исполнил:** добавлены `DATABASE_URL` и `get_database_url()` в `ProjectTP/backend/app/main.py`, `run_migrations()` с `alembic upgrade head` и `stamp head` для старых SQLite без `alembic_version`; удалены `init_db`/`ensure_*` (PRAGMA/sqlite_master); добавлены `ProjectTP/backend/alembic/`, ревизия `ProjectTP/backend/alembic/versions/a9ed29c6b953_initial_schema.py`, зависимости в `ProjectTP/backend/requirements.txt`; в `ProjectTP/backend/Dockerfile` копируются `alembic` и `alembic.ini`; в `ProjectTP/docker-compose.yml` — сервис `db` (Postgres), том `pgdata`, `DATABASE_URL` по умолчанию; обновлены `TASKS.md`, `ProjectTP/deployment_and_tz_request.md`.
 - **Результат:** схема БД версионируется Alembic; в Docker по умолчанию используется PostgreSQL; локально без `DATABASE_URL` остаётся SQLite; задача №17 отмечена выполненной; следующий приоритет в бэклоге — задача №18 (разбиение `main.py`).
 
 ### Шаг 71
 - **Задача:** Убрать SQLite из основного backend — только PostgreSQL через `DATABASE_URL`.
 - **Время:** 2026-04-01 12:30 +03:00
 - **Кто исполнил:** orchestrator + backend + devops
-- **Как исполнил:** в `Проект Проектов/backend/app/main.py` удалены `DATABASE_PATH` и fallback на SQLite; `get_database_url()` требует `postgresql://`/`postgresql+psycopg2://`; `get_engine`/`run_migrations` только под Postgres; в `Проект Проектов/backend/alembic/env.py` убрана ветка SQLite; в `Проект Проектов/docker-compose.yml` — `DATABASE_URL` для `backend` собирается на хост `db`, порт `5432` проброшен на хост, удалён volume `./data`; в `Проект Проектов/.env` добавлен пример `DATABASE_URL` на `127.0.0.1` для локального uvicorn; обновлены `Проект Проектов/deployment_and_tz_request.md`, корневой `.gitignore`, `TASKS.md` (формулировка №17).
-- **Результат:** приложение без SQLite в основном приложении; локальная разработка — Postgres (например `docker compose up -d db` + uvicorn с `DATABASE_URL` на localhost). Папка `Проект Проектов/duty_app` не менялась (отдельный контур).
+- **Как исполнил:** в `ProjectTP/backend/app/main.py` удалены `DATABASE_PATH` и fallback на SQLite; `get_database_url()` требует `postgresql://`/`postgresql+psycopg2://`; `get_engine`/`run_migrations` только под Postgres; в `ProjectTP/backend/alembic/env.py` убрана ветка SQLite; в `ProjectTP/docker-compose.yml` — `DATABASE_URL` для `backend` собирается на хост `db`, порт `5432` проброшен на хост, удалён volume `./data`; в `ProjectTP/.env` добавлен пример `DATABASE_URL` на `127.0.0.1` для локального uvicorn; обновлены `ProjectTP/deployment_and_tz_request.md`, корневой `.gitignore`, `TASKS.md` (формулировка №17).
+- **Результат:** приложение без SQLite в основном приложении; локальная разработка — Postgres (например `docker compose up -d db` + uvicorn с `DATABASE_URL` на localhost). Папка `ProjectTP/duty_app` не менялась (отдельный контур).
 
 ### Шаг 72
 - **Задача:** Начать задачу `TASKS.md` №18 (разбиение монолитного `main.py`) без изменения API-контрактов.
 - **Время:** 2026-04-01 12:50 +03:00
 - **Кто исполнил:** orchestrator + backend
-- **Как исполнил:** вынесены настройки в `Проект Проектов/backend/app/config.py`, модели SQLAlchemy в `Проект Проектов/backend/app/models.py`, подключение/сессия/миграции в `Проект Проектов/backend/app/database.py`; в `Проект Проектов/backend/app/main.py` удалены дубли определений и подключены импорты из новых модулей; в `Проект Проектов/backend/alembic/env.py` источником `Base` стал `app.models`, а URL — `app.database.get_database_url`.
-- **Результат:** `main.py` сокращён на слой конфигурации/ORM/DB, поведение API сохранено; проверка прошла (`python -m py_compile`, импорт `app.main`, smoke `Проект Проектов/check_admin_ops.py` — PASS).
+- **Как исполнил:** вынесены настройки в `ProjectTP/backend/app/config.py`, модели SQLAlchemy в `ProjectTP/backend/app/models.py`, подключение/сессия/миграции в `ProjectTP/backend/app/database.py`; в `ProjectTP/backend/app/main.py` удалены дубли определений и подключены импорты из новых модулей; в `ProjectTP/backend/alembic/env.py` источником `Base` стал `app.models`, а URL — `app.database.get_database_url`.
+- **Результат:** `main.py` сокращён на слой конфигурации/ORM/DB, поведение API сохранено; проверка прошла (`python -m py_compile`, импорт `app.main`, smoke `ProjectTP/check_admin_ops.py` — PASS).
 
 ### Шаг 73
 - **Задача:** Продолжить задачу `TASKS.md` №18 — вынести Pydantic-схемы из `main.py`.
 - **Время:** 2026-04-01 13:05 +03:00
 - **Кто исполнил:** backend
-- **Как исполнил:** создан модуль `Проект Проектов/backend/app/schemas.py` со всеми request/response моделями (`LoginRequest`, `DailyReportOut`, `DutySwapOut` и др.); в `Проект Проектов/backend/app/main.py` удалены inline-классы `BaseModel` и добавлены импорты из `app.schemas`.
-- **Результат:** `main.py` дополнительно сокращён без изменения контрактов API; проверки `py_compile` и smoke `Проект Проектов/check_admin_ops.py` — PASS.
+- **Как исполнил:** создан модуль `ProjectTP/backend/app/schemas.py` со всеми request/response моделями (`LoginRequest`, `DailyReportOut`, `DutySwapOut` и др.); в `ProjectTP/backend/app/main.py` удалены inline-классы `BaseModel` и добавлены импорты из `app.schemas`.
+- **Результат:** `main.py` дополнительно сокращён без изменения контрактов API; проверки `py_compile` и smoke `ProjectTP/check_admin_ops.py` — PASS.
 
 ### Шаг 74
 - **Задача:** Продолжить задачу `TASKS.md` №18 — вынести service/utility блок из `main.py`.
 - **Время:** 2026-04-01 13:15 +03:00
 - **Кто исполнил:** backend
-- **Как исполнил:** создан модуль `Проект Проектов/backend/app/services.py` и перенесены функции генерации инструкции/Word (`build_employee_exit_instruction*`), Excel (`build_report_excel`), export-helpers (`exports_dir`, `safe_export_name_part`, `surname_from_full_name`) и `report_to_out`; в `Проект Проектов/backend/app/main.py` удалены перенесённые реализации и подключены импорты из `app.services`; в endpoint DOCX вынесено формирование `Content-Disposition` через `attachment_content_disposition_docx`.
-- **Результат:** `main.py` дополнительно упрощён, API-контракты сохранены; проверки `py_compile` и smoke `Проект Проектов/check_admin_ops.py` — PASS.
+- **Как исполнил:** создан модуль `ProjectTP/backend/app/services.py` и перенесены функции генерации инструкции/Word (`build_employee_exit_instruction*`), Excel (`build_report_excel`), export-helpers (`exports_dir`, `safe_export_name_part`, `surname_from_full_name`) и `report_to_out`; в `ProjectTP/backend/app/main.py` удалены перенесённые реализации и подключены импорты из `app.services`; в endpoint DOCX вынесено формирование `Content-Disposition` через `attachment_content_disposition_docx`.
+- **Результат:** `main.py` дополнительно упрощён, API-контракты сохранены; проверки `py_compile` и smoke `ProjectTP/check_admin_ops.py` — PASS.
 
 ### Шаг 75
 - **Задача:** Завершить `TASKS.md` №18 — роутеры FastAPI и разделение слоёв.
 - **Время:** 2026-04-01 13:35 +03:00
 - **Кто исполнил:** orchestrator + backend + qa
-- **Как исполнил:** добавлены `Проект Проектов/backend/app/security.py`, `Проект Проектов/backend/app/deps.py`, `Проект Проектов/backend/app/duty_slots.py`; в `Проект Проектов/backend/app/services.py` — `EXPORT_FILENAME_RE`, `is_safe_export_filename`; каталог `Проект Проектов/backend/app/routers/` (`auth.py`, `instruction.py`, `admin_users.py`, `duties.py`, `duty_swaps.py`, `reports.py`, `exports.py`, `__init__.py` с `register_routers`); `Проект Проектов/backend/app/main.py` сведён к созданию приложения, middleware, startup и `register_routers(app)`; исправлено отсутствие импорта `db_session` в startup; прогон smoke: `check_admin_ops.py`, `check_login.py`, `check_instruction_tools.py`; обновлён `TASKS.md` (№18 — выполнено).
+- **Как исполнил:** добавлены `ProjectTP/backend/app/security.py`, `ProjectTP/backend/app/deps.py`, `ProjectTP/backend/app/duty_slots.py`; в `ProjectTP/backend/app/services.py` — `EXPORT_FILENAME_RE`, `is_safe_export_filename`; каталог `ProjectTP/backend/app/routers/` (`auth.py`, `instruction.py`, `admin_users.py`, `duties.py`, `duty_swaps.py`, `reports.py`, `exports.py`, `__init__.py` с `register_routers`); `ProjectTP/backend/app/main.py` сведён к созданию приложения, middleware, startup и `register_routers(app)`; исправлено отсутствие импорта `db_session` в startup; прогон smoke: `check_admin_ops.py`, `check_login.py`, `check_instruction_tools.py`; обновлён `TASKS.md` (№18 — выполнено).
 - **Результат:** задача №18 закрыта; точка входа компактная, маршруты сгруппированы по модулям; смоки по ключевым API — PASS.
 
 ### Шаг 76
@@ -575,41 +575,41 @@
 - **Время:** 2026-04-01 13:40 +03:00
 - **Кто исполнил:** devops
 - **Как исполнил:** освобождены порты 8000/8080; попытка `docker compose up -d db` — `docker` не найден в PATH; запуск `uvicorn` — падение на `run_migrations()` с `psycopg2.OperationalError: connection refused` к `127.0.0.1:5432` (сервер БД на хосте не слушает порт).
-- **Результат:** код и смоки до перезапуска — в порядке; для рабочего старта нужен доступный PostgreSQL по `DATABASE_URL` из `Проект Проектов/.env` (например поднять Postgres через Docker Desktop / установленный сервис), затем снова `uvicorn` и `local_dev_proxy.py`.
+- **Результат:** код и смоки до перезапуска — в порядке; для рабочего старта нужен доступный PostgreSQL по `DATABASE_URL` из `ProjectTP/.env` (например поднять Postgres через Docker Desktop / установленный сервис), затем снова `uvicorn` и `local_dev_proxy.py`.
 
 ### Шаг 77
 - **Задача:** Диагностика 502 при логине через `local_dev_proxy` и улучшение ответа прокси.
 - **Время:** 2026-04-01 14:10 +03:00
 - **Кто исполнил:** orchestrator + backend
-- **Как исполнил:** зафиксировано: 502 при `URLError` в `Проект Проектов/local_dev_proxy.py` означает недоступность backend `127.0.0.1:8000` (часто из-за незапущенного uvicorn или отказа старта из-за PostgreSQL); для путей `/api/*` вместо HTML-страницы ошибки возвращается JSON с пояснением.
+- **Как исполнил:** зафиксировано: 502 при `URLError` в `ProjectTP/local_dev_proxy.py` означает недоступность backend `127.0.0.1:8000` (часто из-за незапущенного uvicorn или отказа старта из-за PostgreSQL); для путей `/api/*` вместо HTML-страницы ошибки возвращается JSON с пояснением.
 - **Результат:** пользователю проще отличить «backend/БД не подняты» от ошибки логина/пароля (которая даёт 401 уже от API).
 
 ### Шаг 78
 - **Задача:** Разнести политику оркестрации: политика vs runbook vs конвенции HANDOFF vs примеры.
 - **Время:** 2026-04-01 (сессия)
 - **Кто исполнил:** orchestrator
-- **Как исполнил:** сокращён `Проект Проектов/subagent-orchestration-policy.md` (ссылки на вынесенное); добавлены `AGENT_WORKFLOW.md`, `docs/handoff-conventions.md`, `docs/examples-orchestration.md`; обновлены `CONTINUE_PROMPT.md`, `HANDOFF.md` (шапка), `TASKS.md` (конвенция **Артефакт:**), `Проект Проектов/agents/README.md` и спецификации techdoc-субагентов.
+- **Как исполнил:** сокращён `ProjectTP/subagent-orchestration-policy.md` (ссылки на вынесенное); добавлены `AGENT_WORKFLOW.md`, `docs/handoff-conventions.md`, `docs/examples-orchestration.md`; обновлены `CONTINUE_PROMPT.md`, `HANDOFF.md` (шапка), `TASKS.md` (конвенция **Артефакт:**), `ProjectTP/agents/README.md` и спецификации techdoc-субагентов.
 - **Результат:** старт чата и формат лога документированы отдельно от абстрактной политики оркестрации.
 
 ### Шаг 79
 - **Задача:** Улучшить старт агента: чеклист, проверка контекста, якорь ACTIVE, правила микрошагов.
 - **Время:** 2026-04-01
 - **Кто исполнил:** orchestrator
-- **Как исполнил:** добавлены `START_CHECKLIST.md`, `scripts/check_agent_context.py`; в `HANDOFF.md` — блок **Якорь ACTIVE**; согласованы `CONTINUE_PROMPT.md`, `AGENT_WORKFLOW.md`, `docs/handoff-conventions.md`, `Проект Проектов/subagent-orchestration-policy.md` (логический шаг vs микрошаги); правило создания `HANDOFF.md` при отсутствии файла.
+- **Как исполнил:** добавлены `START_CHECKLIST.md`, `scripts/check_agent_context.py`; в `HANDOFF.md` — блок **Якорь ACTIVE**; согласованы `CONTINUE_PROMPT.md`, `AGENT_WORKFLOW.md`, `docs/handoff-conventions.md`, `ProjectTP/subagent-orchestration-policy.md` (логический шаг vs микрошаги); правило создания `HANDOFF.md` при отсутствии файла.
 - **Результат:** единый чеклист и опциональная самопроверка; меньше неоднозначности по логированию; ACTIVE для быстрого фокуса.
 
 ### Шаг 80
 - **Задача:** Продолжение по `CONTINUE_PROMPT.md`: облегчённый старт (шаги 76–79 в логе уже описывают рефакторинг и прокси; полный обзор репозитория не дублировал).
 - **Время:** 2026-04-02 12:00 +03:00
 - **Кто исполнил:** orchestrator
-- **Как исполнил:** прочитал `HANDOFF.md`, `TASKS.md`, `Проект Проектов/subagent-orchestration-policy.md`, `AGENT_WORKFLOW.md`, `docs/handoff-conventions.md`; выполнил `python scripts/check_agent_context.py` (OK); проверил среду: `docker` и `node` отсутствуют в PATH (как в шаге 76), `psql` не найден; `python -m py_compile` для всех `Проект Проектов/backend/app/**/*.py` — без ошибок.
-- **Результат:** кодовая база backend синтаксически валидна; для интеграционных смоков и UI нужен PostgreSQL и при желании Node для `node --check`; критерий **Следующий шаг** (браузер, «Админ → Сотрудники») остаётся на стороне пользователя после поднятия БД и `uvicorn` + `local_dev_proxy.py` по `Проект Проектов/deployment_and_tz_request.md`.
+- **Как исполнил:** прочитал `HANDOFF.md`, `TASKS.md`, `ProjectTP/subagent-orchestration-policy.md`, `AGENT_WORKFLOW.md`, `docs/handoff-conventions.md`; выполнил `python scripts/check_agent_context.py` (OK); проверил среду: `docker` и `node` отсутствуют в PATH (как в шаге 76), `psql` не найден; `python -m py_compile` для всех `ProjectTP/backend/app/**/*.py` — без ошибок.
+- **Результат:** кодовая база backend синтаксически валидна; для интеграционных смоков и UI нужен PostgreSQL и при желании Node для `node --check`; критерий **Следующий шаг** (браузер, «Админ → Сотрудники») остаётся на стороне пользователя после поднятия БД и `uvicorn` + `local_dev_proxy.py` по `ProjectTP/deployment_and_tz_request.md`.
 
 ### Шаг 81
 - **Задача:** Удалить устаревший контур SQLite (`duty_app/`) из репозитория после проверки отсутствия ссылок в скриптах.
 - **Время:** 2026-04-08
 - **Кто исполнил:** orchestrator
-- **Как исполнил:** удалён каталог `Проект Проектов/duty_app/`; убрана строка `duty_app/` из `Проект Проектов/.dockerignore`; комментарий в `Проект Проектов/scripts/setup-docker-rocky.sh` про дубликат скрипта; обновлены `ТЗ-по-проекту.md`, `Проектная-документация.md`, `Проект Проектов/security_audit_passwords_excel.md`, `Проект Проектов/deployment_and_tz_request.md` (раздел миграции — только для архивных файлов SQLite вне репо).
+- **Как исполнил:** удалён каталог `ProjectTP/duty_app/`; убрана строка `duty_app/` из `ProjectTP/.dockerignore`; комментарий в `ProjectTP/scripts/setup-docker-rocky.sh` про дубликат скрипта; обновлены `ТЗ-по-проекту.md`, `Проектная-документация.md`, `ProjectTP/security_audit_passwords_excel.md`, `ProjectTP/deployment_and_tz_request.md` (раздел миграции — только для архивных файлов SQLite вне репо).
 - **Результат:** в репозитории нет параллельного стека на SQLite; целевая СУБД — PostgreSQL в основном `backend/`.
 
 ### Шаг 82
@@ -617,12 +617,103 @@
 - **Время:** 2026-04-08
 - **Кто исполнил:** orchestrator
 - **Как исполнил:** в `TASKS.md` в раздел **P1** добавлены задачи **№19** (Docker Engine + Compose вместо Podman как целевой рантайм), **№20** (диагностика тома `pgdata`, причины «пустой БД», бэкапы), **№21** (безопасная пересборка и перенос сервера через `pg_dump`); обновлена строка **ACTIVE** в `HANDOFF.md`.
-- **Результат:** исполнители берут работу сверху раздела P1; документацию по №19–21 предстоит дописать в `Проект Проектов/docs/deploy-rocky-linux.md` / `README.md`.
+- **Результат:** исполнители берут работу сверху раздела P1; документацию по №19–21 предстоит дописать в `ProjectTP/docs/deploy-rocky-linux.md` / `README.md`.
 
 ### Шаг 83
 - **Задача:** Выполнить P1 №19–21 — документация Docker, тома Postgres, пересборка и перенос.
 - **Время:** 2026-04-08
 - **Кто исполнил:** orchestrator + devops
-- **Как исполнил:** расширены `Проект Проектов/docs/deploy-rocky-linux.md` (целевой Docker, §5.1 про том `pgdata` и диагностику, бэкап перед `-v`, §9 без битой ссылки), обновлены `Проект Проектов/README.md`, комментарий healthcheck в `Проект Проектов/docker-compose.yml`; в `TASKS.md` задачи №19–21 отмечены выполненными.
+- **Как исполнил:** расширены `ProjectTP/docs/deploy-rocky-linux.md` (целевой Docker, §5.1 про том `pgdata` и диагностику, бэкап перед `-v`, §9 без битой ссылки), обновлены `ProjectTP/README.md`, комментарий healthcheck в `ProjectTP/docker-compose.yml`; в `TASKS.md` задачи №19–21 отмечены выполненными.
 - **Результат:** критерии №19–21 закрыты текстом в репозитории; полевая проверка на Rocky/прод — по решению команды.
+
+### Шаг 84
+- **Задача:** Продолжение по `CONTINUE_PROMPT.md`: облегчённый старт и техпроверка админ-операций (P1 №1).
+- **Время:** 2026-04-08 (сессия)
+- **Кто исполнил:** orchestrator
+- **Как исполнил:** прочитал `CONTINUE_PROMPT.md`, `HANDOFF.md`, `TASKS.md`, `ProjectTP/subagent-orchestration-policy.md`, `AGENT_WORKFLOW.md`; полный обзор репозитория не дублировал (актуальны шаги 80–83); стек `docker compose` в `ProjectTP/` уже был поднят (nginx на хосте `8080`→80); выполнен `python3 ProjectTP/check_admin_ops.py` — все шаги 200.
+- **Результат:** backend happy-path смены пароля / удаления отчётов / удаления пользователя подтверждён; визуальная проверка кнопок в UI остаётся опциональной для команды.
+
+### Шаг 85
+- **Задача:** Реализовать P1 №23 — временная выдача и отзыв прав администратора (№22 пропущен).
+- **Время:** 2026-04-08 (сессия)
+- **Кто исполнил:** orchestrator + backend + frontend
+- **Как исполнил:** добавлены таблица `admin_role_audit` (Alembic `b7e2c0d14f2a`), модель `AdminRoleAudit`, API `POST .../grant-admin`, `POST .../revoke-admin`, `GET /api/admin/role-audit`; `GET /api/admin/users` возвращает всех пользователей (support+admin), порядок для UI; при удалении support-пользователя очищаются связанные строки аудита; фронт: блок «Права администратора», фильтрация support для графика/отчётов/операций по сотрудникам; smoke `ProjectTP/check_admin_delegate.py`; README обновлён; `TASKS.md` №23 — выполнено.
+- **Результат:** делегирование admin и журнал назначений работают; последнего админа снять нельзя; support не может вызвать эндпоинты без роли admin.
+
+### Шаг 86
+- **Задача:** P1 №23 — UX: права администратора через флажок в таблице пользователей (вместо селекта только по support).
+- **Время:** 2026-04-08 (сессия)
+- **Кто исполнил:** frontend
+- **Как исполнил:** в `ProjectTP/frontend/index.html` и `frontend/app.js` одна таблица всех пользователей с колонкой «Права администратора» (чекбокс); убраны отдельный селект/кнопка и вторая таблица админов; обновлён `ProjectTP/README.md`.
+- **Результат:** выдача/отзыв прав согласованы с формулировкой «вкладка Админ»; пустой селект при отсутствии чистых support не воспроизводится.
+
+### Шаг 87
+- **Задача:** Флажки не видны в UI — кэш статики / видимость чекбоксов.
+- **Время:** 2026-04-08 (сессия)
+- **Кто исполнил:** frontend + devops
+- **Как исполнил:** в `index.html`/`login.html` добавлены query-параметры к `app.js` и `styles.css`; в `styles.css` — явные стили для `#adminUsersEditorTable` чекбоксов; в `nginx/default.conf` — `Cache-Control: no-cache` для `location /`; пустой список пользователей и ошибка загрузки показывают строку-подсказку; `onIndexInit` ловит ошибку `loadEmployees`.
+- **Результат:** после пересборки nginx и Ctrl+F5 подтягивается актуальный JS; чекбоксы заметнее.
+
+### Шаг 88
+- **Задача:** Запретить снятие прав администратора с изначального (bootstrap) админа.
+- **Время:** 2026-04-08 (сессия)
+- **Кто исполнил:** backend + frontend
+- **Как исполнил:** в `app/deps.py` — `is_bootstrap_admin_account()` по `BOOTSTRAP_ADMIN_USERNAME`; в `POST .../revoke-admin` — 400 для bootstrap; в `UserOut`/`UserMeOut` — поле `is_bootstrap_admin`; UI: флажок заблокирован для bootstrap; `check_admin_delegate.py`, `README.md`, `index.html`, `.env.example`, bump `app.js`/`styles.css` query v5.
+- **Результат:** изначального админа нельзя разжаловать ни при нескольких админах, ни как «единственного»; без `BOOTSTRAP_ADMIN_USERNAME` в `.env` защита по логину не срабатывает.
+
+### Шаг 89
+- **Задача:** P2 №24 — убрать у support вводящую в заблуждение кнопку сохранения на графике; не сломать админа.
+- **Время:** 2026-04-08 (сессия)
+- **Кто исполнил:** frontend
+- **Как исполнил:** `body.admin-user` + CSS для `#saveDutiesBtn`; подпись «Сохранить правки графика»; у support автозагрузка при смене `dutiesDate`, кнопка «Обновить» только у админа, подсказка support-only; `TASKS.md` №24 — выполнено; bump статики `?v=20260408-6`.
+- **Результат:** support на вкладке «График» не видит сохранение графика; админ — «Обновить» + сохранение правок.
+
+### Шаг 90
+- **Задача:** P2 №25 — отчёты для support без выбора сотрудника и без «Показать».
+- **Время:** 2026-04-08 (сессия)
+- **Кто исполнил:** frontend
+- **Как исполнил:** кнопка `#loadReportsBtn` — `admin-only`, подпись «Обновить»; CSS `body:not(.admin-user) #loadReportsBtn`; подсказка `support-only`; API уже ограничивает support своими отчётами; автозагрузка — существующие `change` на `#reportsDate` и стартовый блок; `TASKS.md` №25 — выполнено; bump `?v=20260408-7`.
+- **Результат:** support видит дату и свои отчёты при смене даты; админ — выбор сотрудника + «Обновить».
+
+### Шаг 91
+- **Задача:** P2 №29 — в UI отчётов показывать суммарное время по строкам (часы/минуты).
+- **Время:** 2026-04-08 (сессия)
+- **Кто исполнил:** frontend
+- **Как исполнил:** в `app.js` — `formatWorkDurationTotalMinutes`, сумма по полям «Минуты», блок «Всего» под таблицей, пересчёт на `input` и при добавлении/удалении строк; в `styles.css` — отступ для `.report-minutes-total`; bump `?v=20260408-8`; `TASKS.md` №29 — выполнено.
+- **Результат:** под каждой карточкой отчёта видна сумма в формате «N ч M мин»; пустые/некорректные значения минут дают 0 в сумме для этой строки.
+
+### Шаг 92
+- **Задача:** P2 №28 — Excel и UI отчётов: колонки «Задача», «Результат», «Время работы»; шапка дата/ФИО как у заказчика.
+- **Время:** 2026-04-08 (сессия)
+- **Кто исполнил:** backend + frontend
+- **Как исполнил:** миграция `c1d4e8f0a1b2` — поле `report_entries.task`; API `ReportEntryIn`/`Out`; `build_report_excel` (openpyxl: merge B:C для даты и ФИО, строки данных, `minutes_ru_label`); фронт — три колонки ввода; bump `?v=20260408-9`; `TASKS.md` №28 — выполнено.
+- **Результат:** после `alembic upgrade head` старые строки получают пустую задачу; выгрузка .xlsx совпадает с макетом.
+
+### Шаг 93
+- **Задача:** P2 №30 — неактивные к дежурствам не в селектах графика; метка админу; проверки API.
+- **Время:** 2026-04-08 (сессия)
+- **Кто исполнил:** backend + frontend
+- **Как исполнил:** `GET /api/duties` — `UserOut.is_active_for_duties`; `POST /api/duties/batch` — запрет назначения неактивного; `POST /api/duty-swaps` — запрос обмена только если участник активен; фронт — `supportEmployeesForDutySlotSelect`, подпись «не в графике дежурств» в таблице сотрудников и в селектах/просмотре графика; `check_inactive_duties.py`; bump `?v=20260408-10`; `TASKS.md` №30 — выполнено.
+- **Результат:** в слоте с уже назначенным неактивным он остаётся в списке с пометкой; сохранить график с новым назначением неактивного нельзя.
+
+### Шаг 94
+- **Задача:** P3 №32 — подсветка строк графика, где слот назначен на текущего пользователя.
+- **Время:** 2026-04-08 (сессия)
+- **Кто исполнил:** frontend
+- **Как исполнил:** класс `duty-row-self` + `title`; стили зелёного фона, для пересечения с `current-slot` — акцент полосой; bump `?v=20260408-11`; `TASKS.md` №32 — выполнено.
+- **Результат:** свои слоты на выбранную дату визуально отделены; подсказка при наведении.
+
+### Шаг 95
+- **Задача:** P2 №26 — инвентаризация уведомлений и правила против дублей (без Битрикс).
+- **Время:** 2026-04-08 (сессия)
+- **Кто исполнил:** orchestrator
+- **Как исполнил:** добавлен `ProjectTP/docs/notifications-inventory.md` (таблица каналов, n8n/UI, отключённый путь при пустом `N8N_WEBHOOK_URL`, план №22, анти-спам); ссылка в `README.md`; `TASKS.md` №26 — выполнено.
+- **Результат:** зафиксировано «что есть сейчас»; перенос в Битрикс остаётся в задаче №22.
+
+### Шаг 96
+- **Задача:** P2 №31 — каталог приложения переименован в `ProjectTP`.
+- **Время:** 2026-04-08 (сессия)
+- **Кто исполнил:** orchestrator + devops
+- **Как исполнил:** массовая замена путей `Проект Проектов` → `ProjectTP` в текстах репозитория; `mv` каталога; правка `docs/deploy-rocky-linux.md` (cd в клоне); удалён локальный `backend/.venv`; `TASKS.md` №31 — выполнено.
+- **Результат:** приложение в `ProjectTP/`; старый путь в актуальных файлах не используется; для локального Python — `python3 -m venv backend/.venv` заново при необходимости.
 

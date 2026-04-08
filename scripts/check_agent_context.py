@@ -20,7 +20,7 @@ DEFAULT_REQUIRED = [
     "START_CHECKLIST.md",
     "docs/handoff-conventions.md",
     "docs/examples-orchestration.md",
-    "Проект Проектов/subagent-orchestration-policy.md",
+    "ProjectTP/subagent-orchestration-policy.md",
 ]
 
 

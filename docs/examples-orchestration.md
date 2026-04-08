@@ -1,6 +1,6 @@
 # Примеры оркестрации и handoff
 
-Иллюстративные сценарии; нормативные правила — в `Проект Проектов/subagent-orchestration-policy.md` и `AGENT_WORKFLOW.md`.
+Иллюстративные сценарии; нормативные правила — в `ProjectTP/subagent-orchestration-policy.md` и `AGENT_WORKFLOW.md`.
 
 ## Краткие сценарии передачи между агентами
 
