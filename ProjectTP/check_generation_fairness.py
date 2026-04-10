@@ -45,9 +45,13 @@ def main():
         raise SystemExit(f"admin login failed: {code}")
 
     _, users = call(opener, "/api/admin/users", "GET")
-    support_ids = [u["id"] for u in users if u.get("role") == "support" and u.get("is_active_for_duties", True) is not False]
+    support_ids = [
+        u["id"]
+        for u in users
+        if u.get("role") in ("support", "admin") and u.get("is_active_for_duties", True) is not False
+    ]
     if len(support_ids) < 2:
-        raise SystemExit("Need at least 2 active support users in DB for fairness check.")
+        raise SystemExit("Need at least 2 active support or admin users in DB for fairness check.")
 
     # Диапазон в будущем, чтобы не задевать текущие ручные правки
     start = date.today() + timedelta(days=14)

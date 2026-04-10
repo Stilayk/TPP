@@ -81,6 +81,15 @@
     return `${prefix}${path}`;
   }
 
+  /** Тот же префикс, что у api-base, для путей вне /api (например /exports/... при деплое в подпапку). */
+  function appRootPath(path) {
+    if (typeof path !== "string" || !path.startsWith("/")) return path;
+    const raw = document.querySelector('meta[name="api-base"]')?.getAttribute("content") ?? "";
+    const prefix = raw.trim().replace(/\/$/, "");
+    if (!prefix) return path;
+    return `${prefix}${path}`;
+  }
+
   async function apiFetchJson(url, { method = "GET", body, headers } = {}) {
     const resolved = apiUrl(url);
     const res = await fetch(resolved, {
@@ -239,8 +248,9 @@
     });
   }
 
+  /** Сотрудники для дежурств и отчётов: support и админы (админка не исключает из графика). */
   function supportEmployees() {
-    return state.employees.filter((e) => e.role === "support");
+    return state.employees.filter((e) => e.role === "support" || e.role === "admin");
   }
 
   /** Сотрудники для селектов графика: только активные к дежурствам, плюс уже назначенный в слоте (если он неактивен). */
@@ -755,27 +765,6 @@
       const statusPill = card.querySelector(".status-pill");
       if (statusPill) statusPill.textContent = "final";
 
-      if (state.isAdmin) {
-        const resolvedExcelUrl = new URL(excelUrl, window.location.origin).toString();
-        const link = card.querySelector("a.excel-link");
-        if (link) {
-          link.href = resolvedExcelUrl;
-          link.target = "_blank";
-          link.rel = "noopener";
-          link.setAttribute("download", "");
-          link.hidden = false;
-        } else {
-          const a = document.createElement("a");
-          a.className = "excel-link";
-          a.href = resolvedExcelUrl;
-          a.target = "_blank";
-          a.rel = "noopener";
-          a.setAttribute("download", "");
-          a.textContent = "Скачать Excel";
-          card.appendChild(a);
-        }
-      }
-
       const msg = $("#reportsMsg");
       showMsg(msg, "Excel сформирован.", "success");
 
@@ -877,6 +866,18 @@
     const employeeName = report.employee?.full_name || report.employee?.username || `ID ${report.employee_id}`;
     const status = report.status;
     const statusLabel = status === "draft" ? "draft" : "final";
+    const dateStr = String(report.date ?? "").trim();
+    const isFinal = status === "final";
+    let excelAreaHtml = "";
+    if (state.isAdmin) {
+      if (isFinal && dateStr) {
+        const excelPath = appRootPath(`/exports/report_${reportId}_${dateStr}.xlsx`);
+        const excelHref = escapeHtml(excelPath);
+        excelAreaHtml = `<a class="excel-link" href="${excelHref}" target="_blank" rel="noopener">Скачать Excel</a>`;
+      } else {
+        excelAreaHtml = '<a class="excel-link" href="#" hidden>Скачать Excel</a>';
+      }
+    }
 
     card.innerHTML = `
       <div class="report-header">
@@ -914,7 +915,7 @@
       </div>
 
       <div class="muted excel-area">
-        ${state.isAdmin ? '<a class="excel-link" href="#" hidden>Скачать Excel</a>' : ""}
+        ${excelAreaHtml}
       </div>
     `;
 

@@ -16,10 +16,10 @@ def req(path, method="GET", body=None):
     request = urllib.request.Request(BASE + path, data=data, headers=headers, method=method)
     try:
         with opener.open(request, timeout=10) as resp:
-            payload = resp.read().decode("utf-8")
+            payload = (resp.read().decode("utf-8") or "").strip()
             return resp.status, (json.loads(payload) if payload else None)
     except urllib.error.HTTPError as e:
-        payload = e.read().decode("utf-8")
+        payload = (e.read().decode("utf-8") or "").strip()
         return e.code, (json.loads(payload) if payload else None)
 
 

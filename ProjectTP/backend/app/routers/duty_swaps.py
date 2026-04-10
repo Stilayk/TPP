@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 
 from app.database import get_db
-from app.deps import ensure_support_user, get_current_user
+from app.deps import ensure_support_or_admin_user, get_current_user
 from app.duty_slots import slot_start_time_str
 from app.models import DutyAssignment, DutySwapRequest, User
 from app.schemas import DutySwapCreateRequest, DutySwapDecisionRequest, DutySwapOut
@@ -21,8 +21,8 @@ def create_duty_swap_request(
     current_user: User = Depends(get_current_user),
     db=Depends(get_db),
 ) -> DutySwapOut:
-    if current_user.role != "support":
-        raise HTTPException(status_code=403, detail="Only support users can create swap requests")
+    if current_user.role not in ("support", "admin"):
+        raise HTTPException(status_code=403, detail="Only support or admin users can create swap requests")
     if not current_user.is_active_for_duties:
         raise HTTPException(
             status_code=403,
@@ -49,7 +49,7 @@ def create_duty_swap_request(
     if not target_assignment:
         raise HTTPException(status_code=400, detail="Target slot has no assigned employee")
 
-    target_user = ensure_support_user(db, int(target_assignment.support_user_id))
+    target_user = ensure_support_or_admin_user(db, int(target_assignment.support_user_id))
     if target_user.id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot create swap request with yourself")
 
@@ -87,7 +87,7 @@ def list_duty_swap_inbox(
     current_user: User = Depends(get_current_user),
     db=Depends(get_db),
 ) -> list[DutySwapOut]:
-    if current_user.role != "support":
+    if current_user.role not in ("support", "admin"):
         return []
     stmt = select(DutySwapRequest).where(DutySwapRequest.target_user_id == current_user.id)
     if date_ is not None:
@@ -116,8 +116,8 @@ def decide_duty_swap_request(
     current_user: User = Depends(get_current_user),
     db=Depends(get_db),
 ) -> DutySwapOut:
-    if current_user.role != "support":
-        raise HTTPException(status_code=403, detail="Only support users can decide swap requests")
+    if current_user.role not in ("support", "admin"):
+        raise HTTPException(status_code=403, detail="Only support or admin users can decide swap requests")
 
     row = db.get(DutySwapRequest, swap_id)
     if not row:

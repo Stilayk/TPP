@@ -70,7 +70,9 @@ def admin_export_all_reports_excel(
     current_user: User = Depends(require_admin),
     db=Depends(get_db),
 ) -> StreamingResponse:
-    support_users = db.execute(select(User).where(User.role == "support").order_by(User.id)).scalars().all()
+    support_users = db.execute(
+        select(User).where(User.role.in_(("support", "admin"))).order_by(User.id)
+    ).scalars().all()
     reports = db.execute(select(DailyReport).where(DailyReport.date == date_)).scalars().all()
     by_user_id = {r.support_user_id: r for r in reports}
 

@@ -68,10 +68,12 @@ def generate_duties(payload: DutiesGenerateRequest, current_user: User = Depends
         raise HTTPException(status_code=400, detail="end_date must be >= start_date")
 
     support_users = db.execute(
-        select(User).where(User.role == "support", User.is_active_for_duties == True).order_by(User.id)  # noqa: E712
+        select(User)
+        .where(User.role.in_(("support", "admin")), User.is_active_for_duties == True)  # noqa: E712
+        .order_by(User.id)
     ).scalars().all()
     if not support_users:
-        raise HTTPException(status_code=400, detail="No active support users configured")
+        raise HTTPException(status_code=400, detail="No users active for duties (support or admin)")
 
     user_ids = [u.id for u in support_users]
 
@@ -153,7 +155,9 @@ def duties_batch(payload: DutiesBatchRequest, current_user: User = Depends(requi
         slots_seen.add(a.slot)
 
     user_ids = [a.user_id for a in payload.assignments]
-    support_users = db.execute(select(User).where(User.id.in_(user_ids), User.role == "support")).scalars().all()
+    support_users = db.execute(
+        select(User).where(User.id.in_(user_ids), User.role.in_(("support", "admin")))
+    ).scalars().all()
     support_by_id = {u.id: u for u in support_users}
     missing = [uid for uid in user_ids if uid not in support_by_id]
     if missing:
@@ -163,7 +167,7 @@ def duties_batch(payload: DutiesBatchRequest, current_user: User = Depends(requi
         if not u.is_active_for_duties:
             raise HTTPException(
                 status_code=400,
-                detail="Cannot assign a support user who is inactive for duties",
+                detail="Cannot assign an employee who is inactive for duties",
             )
 
     created = 0

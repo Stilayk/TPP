@@ -23,6 +23,14 @@ def ensure_support_user(db, user_id: int) -> User:
     return u
 
 
+def ensure_support_or_admin_user(db, user_id: int) -> User:
+    """Пользователь может дежурить и вести отчёты (роль support или admin)."""
+    u = db.get(User, user_id)
+    if not u or u.role not in ("support", "admin"):
+        raise HTTPException(status_code=400, detail="User is not a support or admin user")
+    return u
+
+
 def get_current_user(request: Request, db=Depends(get_db)) -> User:
     user_id = request.session.get("user_id")
     if not user_id:

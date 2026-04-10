@@ -8,7 +8,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
 from app.database import get_db
-from app.deps import ensure_support_user, get_current_user
+from app.deps import ensure_support_or_admin_user, get_current_user
 from app.models import DailyReport, ReportEntry, User
 from app.schemas import CreateOrGetReportRequest, DailyReportOut, ReportFinalizeOut, UpdateReportRequest
 from app.services import build_report_excel, exports_dir, report_excel_filename, report_to_out
@@ -29,7 +29,7 @@ def create_or_get_report(payload: CreateOrGetReportRequest, current_user: User =
         else:
             target_support_id = payload.employee_id
 
-    employee = ensure_support_user(db, target_support_id)
+    employee = ensure_support_or_admin_user(db, target_support_id)
 
     existing = db.execute(
         select(DailyReport).where(DailyReport.date == payload.date, DailyReport.support_user_id == employee.id)
@@ -69,7 +69,7 @@ def list_reports(
         employee_id = current_user.id
     else:
         if employee_id is not None:
-            employee = ensure_support_user(db, employee_id)
+            employee = ensure_support_or_admin_user(db, employee_id)
             employee_id = employee.id
 
     stmt = select(DailyReport).where(DailyReport.date == date_)
@@ -103,7 +103,7 @@ def update_report(
 
     if current_user.role == "admin":
         if payload.employee_id is not None:
-            ensure_support_user(db, payload.employee_id)
+            ensure_support_or_admin_user(db, payload.employee_id)
     else:
         new_date = report.date
         new_support_id = report.support_user_id

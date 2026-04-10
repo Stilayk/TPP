@@ -5,8 +5,8 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from app.database import get_db
-from app.deps import ensure_support_user, is_bootstrap_admin_account, require_admin
-from app.models import AdminRoleAudit, DailyReport, ReportEntry, User
+from app.deps import ensure_support_or_admin_user, is_bootstrap_admin_account, require_admin
+from app.models import AdminRoleAudit, DailyReport, DutySwapRequest, ReportEntry, User
 from app.schemas import (
     AdminChangePasswordRequest,
     AdminDutyStatusRequest,
@@ -140,7 +140,7 @@ def admin_update_user_duty_status(
     current_user: User = Depends(require_admin),
     db=Depends(get_db),
 ) -> UserOut:
-    user = ensure_support_user(db, user_id)
+    user = ensure_support_or_admin_user(db, user_id)
     user.is_active_for_duties = payload.is_active_for_duties
     db.add(user)
     db.commit()
@@ -155,7 +155,7 @@ def admin_update_user_profile(
     current_user: User = Depends(require_admin),
     db=Depends(get_db),
 ) -> UserOut:
-    user = ensure_support_user(db, user_id)
+    user = ensure_support_or_admin_user(db, user_id)
     user.username = payload.username.strip()
     user.full_name = payload.full_name.strip()
     db.add(user)
@@ -175,7 +175,7 @@ def admin_change_user_password(
     current_user: User = Depends(require_admin),
     db=Depends(get_db),
 ) -> dict:
-    user = ensure_support_user(db, user_id)
+    user = ensure_support_or_admin_user(db, user_id)
     user.password_hash = hash_password(payload.new_password)
     db.add(user)
     db.commit()
@@ -184,7 +184,7 @@ def admin_change_user_password(
 
 @router.delete("/api/admin/users/{user_id}/reports")
 def admin_delete_user_reports(user_id: int, current_user: User = Depends(require_admin), db=Depends(get_db)) -> dict:
-    user = ensure_support_user(db, user_id)
+    user = ensure_support_or_admin_user(db, user_id)
     reports = db.execute(
         select(DailyReport.id, DailyReport.date).where(DailyReport.support_user_id == user.id)
     ).all()
@@ -224,13 +224,23 @@ def admin_delete_user_reports(user_id: int, current_user: User = Depends(require
 
 @router.delete("/api/admin/users/{user_id}")
 def admin_delete_user(user_id: int, current_user: User = Depends(require_admin), db=Depends(get_db)) -> dict:
-    user = ensure_support_user(db, user_id)
+    user = ensure_support_or_admin_user(db, user_id)
+    if is_bootstrap_admin_account(user):
+        raise HTTPException(status_code=400, detail="Cannot delete the bootstrap administrator")
     deleted_user_id = user.id
     db.execute(
         delete(AdminRoleAudit).where(
             or_(
                 AdminRoleAudit.target_user_id == deleted_user_id,
                 AdminRoleAudit.actor_user_id == deleted_user_id,
+            )
+        )
+    )
+    db.execute(
+        delete(DutySwapRequest).where(
+            or_(
+                DutySwapRequest.requester_user_id == deleted_user_id,
+                DutySwapRequest.target_user_id == deleted_user_id,
             )
         )
     )
