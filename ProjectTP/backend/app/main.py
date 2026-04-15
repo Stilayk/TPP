@@ -52,6 +52,12 @@ def on_startup() -> None:
         bootstrap_admin_if_needed(db)
 
 
-app.add_middleware(SessionMiddleware, secret_key=settings.SESSION_SECRET, session_cookie="session")
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.SESSION_SECRET,
+    session_cookie="session",
+    same_site="lax",
+    https_only=settings.SESSION_COOKIE_HTTPS_ONLY,
+)
 
 register_routers(app)

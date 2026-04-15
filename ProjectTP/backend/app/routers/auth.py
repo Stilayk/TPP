@@ -31,6 +31,7 @@ def login(payload: LoginRequest, request: Request, db=Depends(get_db)) -> UserMe
         role=user.role,
         is_active_for_duties=bool(user.is_active_for_duties),
         is_bootstrap_admin=is_bootstrap_admin_account(user),
+        bitrix_user_id=user.bitrix_user_id,
     )
 
 
@@ -49,6 +50,7 @@ def me(current_user: User = Depends(get_current_user)) -> UserMeOut:
         role=current_user.role,
         is_active_for_duties=bool(current_user.is_active_for_duties),
         is_bootstrap_admin=is_bootstrap_admin_account(current_user),
+        bitrix_user_id=current_user.bitrix_user_id,
     )
 
 
@@ -86,4 +88,5 @@ def update_own_profile(
         role=current_user.role,
         is_active_for_duties=bool(current_user.is_active_for_duties),
         is_bootstrap_admin=is_bootstrap_admin_account(current_user),
+        bitrix_user_id=current_user.bitrix_user_id,
     )

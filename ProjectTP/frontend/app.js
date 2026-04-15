@@ -168,6 +168,13 @@
     });
   }
 
+  async function apiAdminUpdateBitrixUserId(userId, bitrixUserId) {
+    return apiFetchJson(`/api/admin/users/${encodeURIComponent(userId)}/bitrix-user`, {
+      method: "PATCH",
+      body: { bitrix_user_id: bitrixUserId },
+    });
+  }
+
   async function apiAdminGrantAdmin(userId) {
     return apiFetchJson(`/api/admin/users/${encodeURIComponent(userId)}/grant-admin`, {
       method: "POST",
@@ -291,7 +298,7 @@
     if (!list.length) {
       const tr = document.createElement("tr");
       const td = document.createElement("td");
-      td.colSpan = 5;
+      td.colSpan = 6;
       td.className = "muted";
       td.textContent =
         "Список пользователей пуст или ещё не загружен. Нажмите «Обновить список». Если таблица не появляется — обновите страницу с полным сбросом кэша (Ctrl+F5).";
@@ -333,6 +340,17 @@
         tdName.textContent = emp.full_name || "";
       }
 
+      const tdBitrix = document.createElement("td");
+      const inpB = document.createElement("input");
+      inpB.type = "text";
+      inpB.inputMode = "numeric";
+      inpB.className = "admin-edit-bitrix-id";
+      inpB.placeholder = "—";
+      inpB.title =
+        "ID пользователя Битрикс24 (число); для упоминания в чате при рассылке графика. У администратора сохраняется кнопкой «Сохранить ID».";
+      inpB.value = emp.bitrix_user_id != null && emp.bitrix_user_id !== undefined ? String(emp.bitrix_user_id) : "";
+      tdBitrix.appendChild(inpB);
+
       const tdRights = document.createElement("td");
       const lbl = document.createElement("label");
       lbl.className = "checkbox-label";
@@ -367,15 +385,19 @@
         btn.textContent = "Сохранить";
         tdAct.appendChild(btn);
       } else {
-        const dash = document.createElement("span");
-        dash.className = "muted";
-        dash.textContent = "—";
-        tdAct.appendChild(dash);
+        const btnBx = document.createElement("button");
+        btnBx.type = "button";
+        btnBx.className = "btn";
+        btnBx.dataset.action = "saveBitrixId";
+        btnBx.textContent = "Сохранить ID";
+        btnBx.title = "Сохранить только ID Битрикс (логин/ФИО админа в таблице не редактируются)";
+        tdAct.appendChild(btnBx);
       }
 
       tr.appendChild(tdId);
       tr.appendChild(tdLogin);
       tr.appendChild(tdName);
+      tr.appendChild(tdBitrix);
       tr.appendChild(tdRights);
       tr.appendChild(tdAct);
       tbody.appendChild(tr);
@@ -1300,6 +1322,21 @@
       }
     });
 
+    $("#notifyDutiesBitrixBtn")?.addEventListener("click", async () => {
+      const msg = $("#notifyDutiesBitrixMsg");
+      try {
+        showMsg(msg, "Отправка в чат…", "info");
+        const today = localISODate();
+        await apiFetchJson(
+          `/api/admin/notifications/duty-schedule/bitrix?date=${encodeURIComponent(today)}`,
+          { method: "POST" },
+        );
+        showMsg(msg, "График на сегодня отправлен в чат.", "success");
+      } catch (e) {
+        showMsg(msg, e.message || String(e), "error");
+      }
+    });
+
     // Admin handlers: create support user
     $("#createUserBtn")?.addEventListener("click", async () => {
       const msg = $("#createUserMsg");
@@ -1310,8 +1347,15 @@
           full_name: $("#newUserFullName").value.trim(),
           password: $("#newUserPassword").value,
         };
+        const bxNew = ($("#newUserBitrixId")?.value || "").trim();
+        if (bxNew) {
+          const n = Number(bxNew);
+          if (!Number.isInteger(n) || n < 1) throw new Error("ID Битрикс: целое число ≥ 1 или оставьте поле пустым.");
+          payload.bitrix_user_id = n;
+        }
         await apiFetchJson("/api/admin/users", { method: "POST", body: payload });
         showMsg(msg, "Сотрудник добавлен.", "success");
+        $("#newUserBitrixId").value = "";
 
         await loadEmployees();
         fillEmployeesSelect($("#reportsEmployeeSelect"), { includeBlank: true, saveKey: "reportsEmployeeId" });
@@ -1348,25 +1392,60 @@
     });
 
     $("#adminUsersEditorBody")?.addEventListener("click", async (ev) => {
+      const row = ev.target?.closest?.("tr");
+      const msg = $("#adminOpsMsg");
+
+      const btnBx = ev.target?.closest?.("button[data-action='saveBitrixId']");
+      if (btnBx && row) {
+        const userId = Number(row.dataset.userId);
+        const bitrixRaw = row.querySelector(".admin-edit-bitrix-id")?.value?.trim() || "";
+        try {
+          if (!userId) throw new Error("Некорректный пользователь.");
+          let bitrixVal = null;
+          if (bitrixRaw) {
+            const n = Number(bitrixRaw);
+            if (!Number.isInteger(n) || n < 1) throw new Error("ID Битрикс: целое число ≥ 1 или пусто.");
+            bitrixVal = n;
+          }
+          const updated = await apiAdminUpdateBitrixUserId(userId, bitrixVal);
+          const idx = state.employees.findIndex((u) => Number(u.id) === Number(updated.id));
+          if (idx >= 0) state.employees[idx] = updated;
+          renderAdminUsersEditor();
+          fillEmployeesSelect($("#reportsEmployeeSelect"), { includeBlank: true, saveKey: "reportsEmployeeId" });
+          fillEmployeesSelect($("#adminUserSelect"), { includeBlank: false });
+          $("#adminUserSelect").value = String(updated.id);
+          syncAdminDutyToggle();
+          showMsg(msg, "ID Битрикс сохранён.", "success");
+        } catch (e) {
+          showMsg(msg, e.message || String(e), "error");
+        }
+        return;
+      }
+
       const btn = ev.target?.closest?.("button[data-action='saveUserProfile']");
-      if (!btn) return;
-      const row = btn.closest("tr");
-      if (!row) return;
+      if (!btn || !row) return;
       const userId = Number(row.dataset.userId);
       const username = row.querySelector(".admin-edit-username")?.value?.trim() || "";
       const fullName = row.querySelector(".admin-edit-fullname")?.value?.trim() || "";
-      const msg = $("#adminOpsMsg");
+      const bitrixRaw = row.querySelector(".admin-edit-bitrix-id")?.value?.trim() || "";
       try {
         if (!userId) throw new Error("Некорректный пользователь.");
         if (!username) throw new Error("Логин не может быть пустым.");
         if (!fullName) throw new Error("ФИО не может быть пустым.");
+        let bitrixVal = null;
+        if (bitrixRaw) {
+          const n = Number(bitrixRaw);
+          if (!Number.isInteger(n) || n < 1) throw new Error("ID Битрикс: целое число ≥ 1 или пусто.");
+          bitrixVal = n;
+        }
         const updated = await apiAdminUpdateUserProfile(userId, username, fullName);
-        const idx = state.employees.findIndex((u) => Number(u.id) === Number(updated.id));
-        if (idx >= 0) state.employees[idx] = updated;
+        const updated2 = await apiAdminUpdateBitrixUserId(userId, bitrixVal);
+        const idx = state.employees.findIndex((u) => Number(u.id) === Number(updated2.id));
+        if (idx >= 0) state.employees[idx] = updated2;
         renderAdminUsersEditor();
         fillEmployeesSelect($("#reportsEmployeeSelect"), { includeBlank: true, saveKey: "reportsEmployeeId" });
         fillEmployeesSelect($("#adminUserSelect"), { includeBlank: false });
-        $("#adminUserSelect").value = String(updated.id);
+        $("#adminUserSelect").value = String(updated2.id);
         syncAdminDutyToggle();
         showMsg(msg, "Данные сотрудника обновлены.", "success");
       } catch (e) {

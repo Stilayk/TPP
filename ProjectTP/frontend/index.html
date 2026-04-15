@@ -146,6 +146,17 @@
           </div>
 
           <div class="card">
+            <h3>Уведомления</h3>
+            <p class="muted">
+              В настроенный чат Битрикс отправляется текстовый график дежурств на <strong>сегодня</strong> (по дате в вашем браузере).
+            </p>
+            <div class="actions">
+              <button id="notifyDutiesBitrixBtn" class="btn" type="button">Уведомить о дежурствах</button>
+            </div>
+            <div id="notifyDutiesBitrixMsg" class="msg info" hidden></div>
+          </div>
+
+          <div class="card">
             <h3>Сотрудники</h3>
             <div class="toolbar">
               <div class="field">
@@ -160,6 +171,10 @@
                 <label for="newUserPassword">Пароль</label>
                 <input id="newUserPassword" type="password" />
               </div>
+              <div class="field">
+                <label for="newUserBitrixId">ID в Битрикс24 (необязательно)</label>
+                <input id="newUserBitrixId" type="text" inputmode="numeric" placeholder="например 6188" />
+              </div>
             </div>
             <div class="actions">
               <button id="createUserBtn" class="btn" type="button">Добавить сотрудника</button>
@@ -170,6 +185,9 @@
             <p class="muted">
               <strong>Права администратора</strong> — включите флажок у пользователя, чтобы у него появилась вкладка «Админ». Снимите флажок, чтобы вернуть роль сотрудника. Изначального администратора (первая учётная запись из настроек сервера) нельзя лишить прав; должен остаться хотя бы один администратор.
             </p>
+            <p class="muted">
+              Колонка <strong>Битрикс</strong> — числовой ID пользователя в портале (и у сотрудников, и у администраторов). У <strong>support</strong> сохраняется вместе с логином/ФИО кнопкой «Сохранить»; у <strong>admin</strong> — кнопкой «Сохранить ID». В уведомлении «график в чат» имя станет ссылкой на профиль, если ID указан.
+            </p>
             <div class="table-wrap">
               <table class="table" id="adminUsersEditorTable">
                 <thead>
@@ -177,6 +195,7 @@
                     <th style="width: 80px;">ID</th>
                     <th>Логин</th>
                     <th>ФИО</th>
+                    <th style="width: 120px;">Битрикс</th>
                     <th style="width: 140px;">Права администратора</th>
                     <th style="width: 160px;"></th>
                   </tr>
@@ -296,7 +315,7 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260409-1" defer></script>
+    <script src="./app.js?v=20260415-1" defer></script>
   </body>
 </html>
 

@@ -16,7 +16,7 @@
 - Смену статуса задачи и следующего шага фиксировать в **Лог шагов** (и при необходимости в `TASKS.md`); блоки **Текущий статус задачи** и **Следующий шаг** не переписывать без договорённости с пользователем (см. `CONTINUE_PROMPT.md`). Строку **ACTIVE** в блоке ниже **можно** обновлять при смене фокуса.
 
 ## Якорь ACTIVE
-- **ACTIVE:** Исправлена ссылка «Скачать Excel» для финализированного отчёта сотрудника (после перезагрузки списка отчётов); следующая по приоритету — **№22** (Битрикс, по согласованию) / **№27** (пауза).
+- **ACTIVE:** **№22** (Битрикс24: график в чат, опционально в связке с 2-мин напоминанием) — **выполнено** (см. `TASKS.md`, `docs/notifications-inventory.md`). Дальше по продукту — **№32** (предупреждение за 5 мин + общий чат), **№33** (QR), **№27** (пауза / чекбоксы инструкции).
 
 ## Роли субагентов
 - `orchestrator`: декомпозирует работу, назначает следующего исполнителя, снимает блокеры.
@@ -731,4 +731,18 @@
 - **Кто исполнил:** frontend
 - **Как исполнил:** причина — после `finalize` вызывался `loadReports()`, карточка пересоздавалась с `href="#"` и скрытой ссылкой; в `ProjectTP/frontend/app.js` для админа при `status === "final"` рендерится видимая ссылка на `/exports/report_{id}_{date}.xlsx` (совпадает с `report_excel_filename` в backend), добавлен `appRootPath` для `api-base`; убрана дублирующая установка ссылки в `finalizeReportExcel`; bump `app.js` в `index.html` до `?v=20260409-1`.
 - **Результат:** скачивание Excel для конкретного сотрудника работает после «Сформировать Excel» и при следующей загрузке отчётов.
+
+### Шаг 99
+- **Задача:** Интеграция Битрикс24 (чат): вебхук, график на день, уведомление за 2 минуты, привязка ID сотрудника и упоминания в тексте.
+- **Время:** 2026-04-15 (сессия)
+- **Кто исполнил:** backend + frontend + qa (агент)
+- **Как исполнил:** в `ProjectTP/backend/app/config.py` и `ProjectTP/docker-compose.yml` / `ProjectTP/.env.example` — переменные `BITRIX_INCOMING_WEBHOOK_URL`, `BITRIX_NOTIFY_DIALOG_ID`, таймаут; в `ProjectTP/backend/app/routers/duties.py` — `_bitrix_messaging_pair`, `_bitrix_im_message_add`, расширен `POST /api/admin/notifications/duty-upcoming/dispatch` (n8n + Bitrix), новый `POST /api/admin/notifications/duty-schedule/bitrix`; модуль `ProjectTP/backend/app/bitrix_mention.py` — формат `[USER=id]…[/USER]` для строк графика и текста «через 2 минуты»; скрипты `ProjectTP/check_bitrix_message.py`, `ProjectTP/backend/send_schedule_bitrix.py`; тесты `ProjectTP/backend/requirements-dev.txt`, `ProjectTP/backend/pytest.ini`, `ProjectTP/backend/tests/test_bitrix_webhook.py`; в `ProjectTP/frontend/index.html` и `ProjectTP/frontend/app.js` — карточка «Уведомления», кнопка «Уведомить о дежурствах», колонка «Битрикс» в таблице сотрудников, `PATCH /api/admin/users/{id}/bitrix-user` при сохранении строки, опциональное поле при создании пользователя.
+- **Результат:** админ может отправить график на сегодня в настроенный чат; при наличии `N8N_WEBHOOK_URL` и/или Bitrix работают оба канала; для проверки вебхука — `python3 ProjectTP/check_bitrix_message.py` из каталога `ProjectTP/` с заполненным `.env`.
+
+### Шаг 100
+- **Задача:** Поле `bitrix_user_id` у пользователей (Битрикс) и скрытие его в публичных ответах API графика/отчётов.
+- **Время:** 2026-04-15 (сессия)
+- **Кто исполнил:** backend (агент)
+- **Как исполнил:** миграция `ProjectTP/backend/alembic/versions/e4f5a6b7c8d9_users_bitrix_user_id.py`; колонка и поле в `ProjectTP/backend/app/models.py`; в `ProjectTP/backend/app/schemas.py` — `UserOut.bitrix_user_id`, `AdminBitrixUserIdRequest`, опционально в `CreateSupportUserRequest`; `ProjectTP/backend/app/routers/admin_users.py` — `PATCH /api/admin/users/{user_id}/bitrix-user`, выдача ID в `_user_out`, создание с `bitrix_user_id`; `ProjectTP/backend/app/routers/auth.py` — `UserMeOut` с полем; в `ProjectTP/backend/app/routers/duties.py` и `ProjectTP/backend/app/services.py` при сборке `UserOut` для графика и отчётов — `bitrix_user_id=None` (не светить коллегам); тест `ProjectTP/backend/tests/test_bitrix_mention.py`.
+- **Результат:** ID хранится в БД и редактируется в админке; в чат уходит график с BB-упоминаниями для заполненного ID; в `GET /api/duties` и сотруднике в отчёте поле не отдаётся.
 

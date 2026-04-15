@@ -1,0 +1,38 @@
+from __future__ import annotations
+
+import json
+from unittest.mock import MagicMock, patch
+
+import pytest
+from fastapi import HTTPException
+
+from app.routers.duties import _bitrix_im_message_add
+
+
+def _mock_urlopen_success(mock_urlopen: MagicMock, body: bytes) -> None:
+    enter = MagicMock()
+    enter.read.return_value = body
+    mock_urlopen.return_value.__enter__.return_value = enter
+    mock_urlopen.return_value.__exit__.return_value = None
+
+
+@patch("app.routers.duties.urlopen")
+def test_bitrix_im_message_add_success(mock_urlopen: MagicMock) -> None:
+    _mock_urlopen_success(mock_urlopen, b'{"result":123}')
+    _bitrix_im_message_add("https://example.com/rest/1/token/", "6188", "Тестовое сообщение")
+    mock_urlopen.assert_called_once()
+    (req,), kwargs = mock_urlopen.call_args
+    assert req.full_url == "https://example.com/rest/1/token/im.message.add.json"
+    assert kwargs.get("timeout") is not None
+    data = json.loads(req.data.decode("utf-8"))
+    assert data == {"DIALOG_ID": "6188", "MESSAGE": "Тестовое сообщение"}
+
+
+@patch("app.routers.duties.urlopen")
+def test_bitrix_im_message_add_bitrix_error_json(mock_urlopen: MagicMock) -> None:
+    err = json.dumps({"error": "ACCESS_DENIED", "error_description": "no im"}).encode("utf-8")
+    _mock_urlopen_success(mock_urlopen, err)
+    with pytest.raises(HTTPException) as ei:
+        _bitrix_im_message_add("https://example.com/rest/1/t/", "1", "x")
+    assert ei.value.status_code == 502
+    assert "bitrix" in (ei.value.detail or "").lower()
