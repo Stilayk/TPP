@@ -17,3 +17,8 @@ def test_bitrix_im_display_name_with_bbcode() -> None:
 def test_bitrix_im_display_name_admin_with_bbcode() -> None:
     u = User(username="adm", full_name="Админ А.", role="admin", password_hash="x", bitrix_user_id=999)
     assert bitrix_im_display_name(u) == "[USER=999]Админ А.[/USER]"
+
+
+def test_bitrix_im_display_name_technical_user_login_no_bbcode() -> None:
+    u = User(username="user", full_name="Все", role="support", password_hash="x", bitrix_user_id=441509)
+    assert bitrix_im_display_name(u) == "Все"

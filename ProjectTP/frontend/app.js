@@ -1325,13 +1325,13 @@
     $("#notifyDutiesBitrixBtn")?.addEventListener("click", async () => {
       const msg = $("#notifyDutiesBitrixMsg");
       try {
-        showMsg(msg, "Отправка в чат…", "info");
+        showMsg(msg, "Отправка графика в Битрикс…", "info");
         const today = localISODate();
         await apiFetchJson(
           `/api/admin/notifications/duty-schedule/bitrix?date=${encodeURIComponent(today)}`,
           { method: "POST" },
         );
-        showMsg(msg, "График на сегодня отправлен в чат.", "success");
+        showMsg(msg, "График на сегодня отправлен в настроенный чат Битрикс.", "success");
       } catch (e) {
         showMsg(msg, e.message || String(e), "error");
       }
