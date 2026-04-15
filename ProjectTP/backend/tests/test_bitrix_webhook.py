@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
+from urllib.error import HTTPError
 
 from app.routers.duties import _bitrix_im_message_add
 
@@ -36,3 +38,17 @@ def test_bitrix_im_message_add_bitrix_error_json(mock_urlopen: MagicMock) -> Non
         _bitrix_im_message_add("https://example.com/rest/1/t/", "1", "x")
     assert ei.value.status_code == 502
     assert "bitrix" in (ei.value.detail or "").lower()
+
+
+@patch("app.routers.duties.urlopen")
+def test_bitrix_im_message_add_http_error_body(mock_urlopen: MagicMock) -> None:
+    body = json.dumps(
+        {"error": "CANCELED", "error_description": "Вы не можете отправлять сообщения в указанный чат"},
+    ).encode("utf-8")
+    http_err = HTTPError("https://example.com/rest/1/t/im.message.add.json", 400, "Bad Request", None, BytesIO(body))
+    mock_urlopen.side_effect = http_err
+    with pytest.raises(HTTPException) as ei:
+        _bitrix_im_message_add("https://example.com/rest/1/t/", "chat1", "x")
+    assert ei.value.status_code == 502
+    assert "400" in (ei.value.detail or "")
+    assert "указанный чат" in (ei.value.detail or "") or "CANCELED" in (ei.value.detail or "")

@@ -59,7 +59,17 @@ def _bitrix_im_message_add(base_url: str, dialog_id: str, message: str) -> None:
         with urlopen(req, timeout=settings.BITRIX_WEBHOOK_TIMEOUT_SEC) as resp:
             raw = resp.read().decode("utf-8")
     except HTTPError as e:
-        raise HTTPException(status_code=502, detail=f"bitrix webhook HTTP {e.code}") from e
+        raw_err = e.read().decode("utf-8", errors="replace")
+        detail = f"bitrix webhook HTTP {e.code}"
+        try:
+            err_data = json.loads(raw_err)
+            if isinstance(err_data, dict) and err_data.get("error"):
+                bd = err_data.get("error_description") or err_data.get("error")
+                detail = f"bitrix: {bd} (HTTP {e.code})"
+        except json.JSONDecodeError:
+            if raw_err.strip():
+                detail = f"{detail}: {raw_err.strip()[:400]}"
+        raise HTTPException(status_code=502, detail=detail) from e
     except URLError as e:
         raise HTTPException(status_code=502, detail="bitrix webhook unreachable") from e
     try:
