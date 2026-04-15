@@ -20,6 +20,8 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(16), nullable=False, index=True)  # "admin" | "support"
     password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
     is_active_for_duties: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # ID пользователя Битрикс24 для упоминаний [USER=id] в чате; не секрет
+    bitrix_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     duty_assignments: Mapped[list["DutyAssignment"]] = relationship(
         back_populates="support_user", cascade="all,delete"

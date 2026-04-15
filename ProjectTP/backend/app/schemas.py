@@ -17,6 +17,7 @@ class CreateSupportUserRequest(BaseModel):
     username: str = Field(min_length=1, max_length=64)
     full_name: str = Field(min_length=1, max_length=200)
     password: str = Field(min_length=1, max_length=200)
+    bitrix_user_id: Optional[int] = Field(None, ge=1, le=2_147_483_647)
 
 
 class AdminChangePasswordRequest(BaseModel):
@@ -25,6 +26,12 @@ class AdminChangePasswordRequest(BaseModel):
 
 class AdminDutyStatusRequest(BaseModel):
     is_active_for_duties: bool
+
+
+class AdminBitrixUserIdRequest(BaseModel):
+    """null — сбросить привязку к пользователю Битрикс24."""
+
+    bitrix_user_id: Optional[int] = Field(None, ge=1, le=2_147_483_647)
 
 
 class AdminUpdateUserRequest(BaseModel):
@@ -59,6 +66,7 @@ class UserOut(BaseModel):
     role: str
     is_active_for_duties: bool = True
     is_bootstrap_admin: bool = False
+    bitrix_user_id: Optional[int] = None
 
 
 class AdminRoleAuditOut(BaseModel):
@@ -180,3 +188,10 @@ class DutyNotificationDispatchOut(BaseModel):
     start_time: str
     employee_id: Optional[int] = None
     employee_name: Optional[str] = None
+    n8n_sent: Optional[bool] = None
+    bitrix_sent: Optional[bool] = None
+
+
+class DutyScheduleBitrixDispatchOut(BaseModel):
+    sent: bool
+    date: date

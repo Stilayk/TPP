@@ -10,6 +10,7 @@ from sqlalchemy import delete, func, select
 from urllib.error import HTTPError, URLError
 from urllib.request import Request as UrlRequest, urlopen
 
+from app.bitrix_mention import bitrix_im_display_name
 from app.config import settings
 from app.database import db_session, get_db
 from app.deps import require_admin, require_support_or_admin
@@ -21,11 +22,63 @@ from app.schemas import (
     DutiesGenerateRequest,
     DutiesOut,
     DutyNotificationDispatchOut,
+    DutyScheduleBitrixDispatchOut,
     DutySlotOut,
     UserOut,
 )
 
 router = APIRouter()
+
+
+def _bitrix_messaging_pair() -> tuple[str, str] | None:
+    bx_url = (settings.BITRIX_INCOMING_WEBHOOK_URL or "").strip()
+    bx_dialog = (settings.BITRIX_NOTIFY_DIALOG_ID or "").strip()
+    has_bx_url = bool(bx_url)
+    has_bx_dialog = bool(bx_dialog)
+    if has_bx_url != has_bx_dialog:
+        raise HTTPException(
+            status_code=400,
+            detail="Bitrix: set both BITRIX_INCOMING_WEBHOOK_URL and BITRIX_NOTIFY_DIALOG_ID, or leave both empty",
+        )
+    if has_bx_url and has_bx_dialog:
+        return bx_url, bx_dialog
+    return None
+
+
+def _bitrix_im_message_add(base_url: str, dialog_id: str, message: str) -> None:
+    base = base_url.rstrip("/") + "/"
+    url = f"{base}im.message.add.json"
+    body = json.dumps({"DIALOG_ID": dialog_id, "MESSAGE": message}).encode("utf-8")
+    req = UrlRequest(
+        url,
+        data=body,
+        method="POST",
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urlopen(req, timeout=settings.BITRIX_WEBHOOK_TIMEOUT_SEC) as resp:
+            raw = resp.read().decode("utf-8")
+    except HTTPError as e:
+        raw_err = e.read().decode("utf-8", errors="replace")
+        detail = f"bitrix webhook HTTP {e.code}"
+        try:
+            err_data = json.loads(raw_err)
+            if isinstance(err_data, dict) and err_data.get("error"):
+                bd = err_data.get("error_description") or err_data.get("error")
+                detail = f"bitrix: {bd} (HTTP {e.code})"
+        except json.JSONDecodeError:
+            if raw_err.strip():
+                detail = f"{detail}: {raw_err.strip()[:400]}"
+        raise HTTPException(status_code=502, detail=detail) from e
+    except URLError as e:
+        raise HTTPException(status_code=502, detail="bitrix webhook unreachable") from e
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=502, detail="bitrix: invalid JSON response")
+    if isinstance(data, dict) and data.get("error"):
+        desc = data.get("error_description") or data.get("error")
+        raise HTTPException(status_code=502, detail=f"bitrix: {desc}")
 
 
 @router.get("/api/duties", response_model=DutiesOut)
@@ -54,6 +107,7 @@ def get_duties(
                     full_name=user.full_name,
                     role=user.role,
                     is_active_for_duties=bool(user.is_active_for_duties),
+                    bitrix_user_id=None,
                 )
                 if user
                 else None,
@@ -214,48 +268,101 @@ def admin_dispatch_upcoming_duty_notification(
         )
 
     assignment, user = row
+    start_time = slot_start_time_str(assignment.slot)
     payload = {
         "event": "duty_upcoming_2m",
         "date": assignment.date.isoformat(),
         "slot": int(assignment.slot),
-        "start_time": slot_start_time_str(assignment.slot),
+        "start_time": start_time,
         "employee": {
             "id": int(user.id),
             "full_name": user.full_name,
             "username": user.username,
         },
     }
+    human_message = (
+        f"Через 2 минуты дежурство: {bitrix_im_display_name(user)}, слот {start_time}, дата {assignment.date.isoformat()}"
+    )
 
-    if not settings.N8N_WEBHOOK_URL:
+    n8n_configured = bool(settings.N8N_WEBHOOK_URL and settings.N8N_WEBHOOK_URL.strip())
+    bitrix_pair = _bitrix_messaging_pair()
+
+    if not n8n_configured and bitrix_pair is None:
         return DutyNotificationDispatchOut(
             sent=False,
-            reason="N8N webhook is not configured",
+            reason="No notification channels configured (N8N_WEBHOOK_URL and/or Bitrix env vars)",
             date=assignment.date,
             slot=assignment.slot,
-            start_time=slot_start_time_str(assignment.slot),
+            start_time=start_time,
             employee_id=user.id,
             employee_name=user.full_name,
+            n8n_sent=None,
+            bitrix_sent=None,
         )
 
-    req = UrlRequest(
-        settings.N8N_WEBHOOK_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        method="POST",
-        headers={"Content-Type": "application/json"},
-    )
-    try:
-        with urlopen(req, timeout=settings.N8N_WEBHOOK_TIMEOUT_SEC):
-            pass
-    except HTTPError as e:
-        raise HTTPException(status_code=502, detail=f"n8n webhook error: {e.code}")
-    except URLError:
-        raise HTTPException(status_code=502, detail="n8n webhook unavailable")
+    n8n_sent: bool | None = None
+    if n8n_configured:
+        req = UrlRequest(
+            settings.N8N_WEBHOOK_URL.strip(),
+            data=json.dumps(payload).encode("utf-8"),
+            method="POST",
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with urlopen(req, timeout=settings.N8N_WEBHOOK_TIMEOUT_SEC):
+                pass
+        except HTTPError as e:
+            raise HTTPException(status_code=502, detail=f"n8n webhook error: {e.code}") from e
+        except URLError as e:
+            raise HTTPException(status_code=502, detail="n8n webhook unavailable") from e
+        n8n_sent = True
+
+    bitrix_sent: bool | None = None
+    if bitrix_pair is not None:
+        bx_url, bx_dialog = bitrix_pair
+        _bitrix_im_message_add(bx_url, bx_dialog, human_message)
+        bitrix_sent = True
 
     return DutyNotificationDispatchOut(
         sent=True,
         date=assignment.date,
         slot=assignment.slot,
-        start_time=slot_start_time_str(assignment.slot),
+        start_time=start_time,
         employee_id=user.id,
         employee_name=user.full_name,
+        n8n_sent=n8n_sent,
+        bitrix_sent=bitrix_sent,
     )
+
+
+@router.post("/api/admin/notifications/duty-schedule/bitrix", response_model=DutyScheduleBitrixDispatchOut)
+def admin_send_duty_schedule_to_bitrix(
+    date_: Optional[date] = Query(None, alias="date", description="Дата графика; по умолчанию сегодня"),
+    current_user: User = Depends(require_admin),
+    db=Depends(get_db),
+) -> DutyScheduleBitrixDispatchOut:
+    target_date = date_ or date.today()
+    pair = _bitrix_messaging_pair()
+    if pair is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Bitrix not configured (set BITRIX_INCOMING_WEBHOOK_URL and BITRIX_NOTIFY_DIALOG_ID)",
+        )
+    bx_url, bx_dialog = pair
+
+    rows = db.execute(
+        select(DutyAssignment, User)
+        .join(User, DutyAssignment.support_user_id == User.id)
+        .where(DutyAssignment.date == target_date)
+    ).all()
+    by_slot: dict[int, User] = {assignment.slot: u for assignment, u in rows}
+
+    lines = [f"Дежурства на {target_date.isoformat()}:"]
+    for slot in range(0, SLOT_COUNT):
+        t = slot_start_time_str(slot)
+        u = by_slot.get(slot)
+        lines.append(f"{t} — {bitrix_im_display_name(u)}" if u else f"{t} — не назначено")
+    message = "\n".join(lines)
+
+    _bitrix_im_message_add(bx_url, bx_dialog, message)
+    return DutyScheduleBitrixDispatchOut(sent=True, date=target_date)

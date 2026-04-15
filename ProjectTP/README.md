@@ -17,8 +17,9 @@ docker compose up -d --build
 
 ## Документация
 
+- [docs/roadmap.md](docs/roadmap.md) — **дорожная карта** продукта и открытые направления.
 - [docs/deploy-rocky-linux.md](docs/deploy-rocky-linux.md) — **целевой стек Docker**, запуск, обновление без потери БД, бэкап, перенос на другой хост, Rocky Linux, firewalld.
-- [docs/notifications-inventory.md](docs/notifications-inventory.md) — **уведомления** (n8n, UI, план Битрикс №22).
+- [docs/notifications-inventory.md](docs/notifications-inventory.md) — **уведомления** (n8n, UI, Битрикс **№22** — выполнено).
 
 Целевой рантайм контейнеров: **Docker Engine** + `docker compose` (см. раздел 1 в файле выше).
 

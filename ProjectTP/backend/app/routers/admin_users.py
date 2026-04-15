@@ -8,6 +8,7 @@ from app.database import get_db
 from app.deps import ensure_support_or_admin_user, is_bootstrap_admin_account, require_admin
 from app.models import AdminRoleAudit, DailyReport, DutySwapRequest, ReportEntry, User
 from app.schemas import (
+    AdminBitrixUserIdRequest,
     AdminChangePasswordRequest,
     AdminDutyStatusRequest,
     AdminRoleAuditOut,
@@ -29,6 +30,7 @@ def _user_out(u: User) -> UserOut:
         role=u.role,
         is_active_for_duties=bool(u.is_active_for_duties),
         is_bootstrap_admin=is_bootstrap_admin_account(u),
+        bitrix_user_id=u.bitrix_user_id,
     )
 
 
@@ -62,7 +64,13 @@ def admin_list_role_audit(
 
 @router.post("/api/admin/users", response_model=UserOut)
 def admin_create_user(payload: CreateSupportUserRequest, current_user: User = Depends(require_admin), db=Depends(get_db)) -> UserOut:
-    user = User(username=payload.username, full_name=payload.full_name, role="support", password_hash=hash_password(payload.password))
+    user = User(
+        username=payload.username,
+        full_name=payload.full_name,
+        role="support",
+        password_hash=hash_password(payload.password),
+        bitrix_user_id=payload.bitrix_user_id,
+    )
     db.add(user)
     try:
         db.commit()
@@ -128,6 +136,21 @@ def admin_revoke_admin(
             action="revoke",
         )
     )
+    db.commit()
+    db.refresh(user)
+    return _user_out(user)
+
+
+@router.patch("/api/admin/users/{user_id}/bitrix-user", response_model=UserOut)
+def admin_update_bitrix_user_id(
+    user_id: int,
+    payload: AdminBitrixUserIdRequest,
+    current_user: User = Depends(require_admin),
+    db=Depends(get_db),
+) -> UserOut:
+    user = ensure_support_or_admin_user(db, user_id)
+    user.bitrix_user_id = payload.bitrix_user_id
+    db.add(user)
     db.commit()
     db.refresh(user)
     return _user_out(user)

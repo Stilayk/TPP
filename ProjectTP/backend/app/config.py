@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = ""
     EXPORTS_DIR: str = "exports"
     SESSION_SECRET: str = ""
+    # В проде за HTTPS включите true — cookie сессии с флагом Secure (на HTTP локально оставьте false).
+    SESSION_COOKIE_HTTPS_ONLY: bool = False
 
     BOOTSTRAP_ADMIN_USERNAME: str = ""
     BOOTSTRAP_ADMIN_PASSWORD: str = ""
@@ -28,6 +30,12 @@ class Settings(BaseSettings):
     CORS_ALLOW_ORIGINS: str = ""  # comma-separated
     N8N_WEBHOOK_URL: str = ""
     N8N_WEBHOOK_TIMEOUT_SEC: int = 5
+
+    # Битрикс24: базовый URL входящего вебхука (…/rest/<user>/<token>/), без метода в конце.
+    BITRIX_INCOMING_WEBHOOK_URL: str = ""
+    # Куда писать: для лички — ID пользователя Битрикс строкой (например 6188); для чата — chatNNN.
+    BITRIX_NOTIFY_DIALOG_ID: str = ""
+    BITRIX_WEBHOOK_TIMEOUT_SEC: int = 10
 
 
 settings = Settings()
