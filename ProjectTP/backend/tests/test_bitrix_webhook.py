@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import json
 from io import BytesIO
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
 from urllib.error import HTTPError
 
-from app.routers.duties import _bitrix_im_message_add
+from app.routers.duties import _bitrix_im_message_add, _resolve_notification_slot
 
 
 def _mock_urlopen_success(mock_urlopen: MagicMock, body: bytes) -> None:
@@ -52,3 +53,21 @@ def test_bitrix_im_message_add_http_error_body(mock_urlopen: MagicMock) -> None:
     assert ei.value.status_code == 502
     assert "400" in (ei.value.detail or "")
     assert "указанный чат" in (ei.value.detail or "") or "CANCELED" in (ei.value.detail or "")
+
+
+def test_resolve_notification_slot_hits_start_of_slot() -> None:
+    duty_date, duty_slot, _ = _resolve_notification_slot(
+        at=datetime(2026, 4, 15, 9, 55, 0),
+        offset_minutes=5,
+    )
+    assert duty_date is not None
+    assert duty_slot == 3  # 10:00 slot when SLOT_START_HOUR=07:00
+
+
+def test_resolve_notification_slot_ignores_non_trigger_minutes() -> None:
+    duty_date, duty_slot, _ = _resolve_notification_slot(
+        at=datetime(2026, 4, 15, 9, 56, 0),
+        offset_minutes=5,
+    )
+    assert duty_date is None
+    assert duty_slot is None

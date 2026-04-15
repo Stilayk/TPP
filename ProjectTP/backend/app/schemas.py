@@ -183,13 +183,34 @@ class ReportFinalizeOut(BaseModel):
 class DutyNotificationDispatchOut(BaseModel):
     sent: bool
     reason: Optional[str] = None
+    event: Optional[str] = None
     date: date
     slot: int
     start_time: str
     employee_id: Optional[int] = None
     employee_name: Optional[str] = None
+    employee_bitrix_user_id: Optional[int] = None
     n8n_sent: Optional[bool] = None
-    bitrix_sent: Optional[bool] = None
+    bitrix_personal_sent: Optional[bool] = None
+    bitrix_chat_sent: Optional[bool] = None
+
+
+class DutyNotificationMethodSettings(BaseModel):
+    enabled_upcoming_5m: bool
+    enabled_start: bool
+    enabled_chat_on_start: bool
+
+
+class DutyNotificationSettingsOut(BaseModel):
+    selected_method: str
+    cron: DutyNotificationMethodSettings
+    n8n: DutyNotificationMethodSettings
+
+
+class DutyNotificationSettingsUpdateRequest(BaseModel):
+    selected_method: str = Field(pattern="^(cron|n8n)$")
+    cron: DutyNotificationMethodSettings
+    n8n: DutyNotificationMethodSettings
 
 
 class DutyScheduleBitrixDispatchOut(BaseModel):

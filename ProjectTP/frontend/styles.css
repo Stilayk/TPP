@@ -137,6 +137,35 @@ body:not(.admin-user) #loadReportsBtn {
   margin-top: 2px;
 }
 
+/* Переключатели способа запуска (cron/n8n): круглые и взаимоисключающие */
+input[type="radio"][name="notificationMethod"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  min-width: 1.05rem;
+  margin: 0;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+/* Галочки конкретных уведомлений: квадратные, множественный выбор */
+#notifCronSettingsBlock input[type="checkbox"],
+#notifN8nSettingsBlock input[type="checkbox"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  min-width: 1.05rem;
+  margin: 0;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.notification-settings-block {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 10px;
+  background: #f8fafc;
+}
+
 label {
   font-size: 0.9rem;
   color: #334155;

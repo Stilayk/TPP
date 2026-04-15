@@ -148,11 +148,60 @@
           <div class="card">
             <h3>Уведомления</h3>
             <p class="muted">
-              В чат из настроек сервера (<code>BITRIX_NOTIFY_DIALOG_ID</code>) уходит текстовый график на <strong>сегодня</strong> (дата браузера). Это не личные сообщения сотрудникам.
+              В чат из настроек сервера (<code>BITRIX_NOTIFY_DIALOG_ID</code>) уходит текстовый график на <strong>сегодня</strong> (дата браузера). Ниже — управление способом запуска уведомлений о дежурствах.
             </p>
+            <div class="toolbar">
+              <div class="field checkbox">
+                <label class="checkbox-label">
+                  <input id="notifMethodCron" type="radio" name="notificationMethod" />
+                  Способ запуска: cron
+                </label>
+              </div>
+              <div class="field checkbox">
+                <label class="checkbox-label">
+                  <input id="notifMethodN8n" type="radio" name="notificationMethod" />
+                  Способ запуска: n8n
+                </label>
+              </div>
+            </div>
+            <div id="notifCronSettingsBlock" class="notification-settings-block">
+              <div class="muted"><strong>Настройки уведомлений: cron</strong></div>
+              <div class="toolbar">
+                <label class="checkbox-label">
+                  <input id="notifCron5m" type="checkbox" />
+                  Уведомления за 5 минут
+                </label>
+                <label class="checkbox-label">
+                  <input id="notifCronStart" type="checkbox" />
+                  Уведомления о начале дежурства
+                </label>
+                <label class="checkbox-label">
+                  <input id="notifCronChatStart" type="checkbox" />
+                  Уведомления в общий чат
+                </label>
+              </div>
+            </div>
+            <div id="notifN8nSettingsBlock" class="notification-settings-block" hidden>
+              <div class="muted"><strong>Настройки уведомлений: n8n</strong></div>
+              <div class="toolbar">
+                <label class="checkbox-label">
+                  <input id="notifN8n5m" type="checkbox" />
+                  Уведомления за 5 минут
+                </label>
+                <label class="checkbox-label">
+                  <input id="notifN8nStart" type="checkbox" />
+                  Уведомления о начале дежурства
+                </label>
+                <label class="checkbox-label">
+                  <input id="notifN8nChatStart" type="checkbox" />
+                  Уведомления в общий чат
+                </label>
+              </div>
+            </div>
             <div class="actions">
               <button id="notifyDutiesBitrixBtn" class="btn" type="button">Отправить график на сегодня в Битрикс</button>
             </div>
+            <div id="notificationSettingsMsg" class="msg info" hidden></div>
             <div id="notifyDutiesBitrixMsg" class="msg info" hidden></div>
           </div>
 
@@ -315,7 +364,7 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260415-2" defer></script>
+    <script src="./app.js?v=20260415-4" defer></script>
   </body>
 </html>
 

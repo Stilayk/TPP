@@ -13,6 +13,8 @@
     currentDuties: null,
     slotCount: SLOT_COUNT,
     slotStartHour: SLOT_START_HOUR,
+    notificationSettingsReady: false,
+    notificationSettingsSaving: false,
   };
 
   const $ = (sel, root = document) => root.querySelector(sel);
@@ -191,6 +193,17 @@
 
   async function apiAdminRoleAudit(limit = 50) {
     return apiFetchJson(`/api/admin/role-audit?limit=${encodeURIComponent(String(limit))}`);
+  }
+
+  async function apiGetNotificationSettings() {
+    return apiFetchJson("/api/admin/notifications/settings");
+  }
+
+  async function apiUpdateNotificationSettings(payload) {
+    return apiFetchJson("/api/admin/notifications/settings", {
+      method: "PATCH",
+      body: payload,
+    });
   }
 
   async function apiChangeOwnPassword(oldPassword, newPassword) {
@@ -455,6 +468,72 @@
 
     if (!state.isAdmin) {
       // Remove dropdown selection controls that are admin-specific from state.
+    }
+  }
+
+  function selectedNotificationMethod() {
+    return $("#notifMethodN8n")?.checked ? "n8n" : "cron";
+  }
+
+  function updateNotificationSettingsVisibility() {
+    const method = selectedNotificationMethod();
+    const cronBlock = $("#notifCronSettingsBlock");
+    const n8nBlock = $("#notifN8nSettingsBlock");
+    if (cronBlock) cronBlock.hidden = method !== "cron";
+    if (n8nBlock) n8nBlock.hidden = method !== "n8n";
+  }
+
+  function applyNotificationSettingsToUi(settings) {
+    if (!settings) return;
+    $("#notifMethodCron").checked = settings.selected_method === "cron";
+    $("#notifMethodN8n").checked = settings.selected_method === "n8n";
+
+    $("#notifCron5m").checked = Boolean(settings?.cron?.enabled_upcoming_5m);
+    $("#notifCronStart").checked = Boolean(settings?.cron?.enabled_start);
+    $("#notifCronChatStart").checked = Boolean(settings?.cron?.enabled_chat_on_start);
+
+    $("#notifN8n5m").checked = Boolean(settings?.n8n?.enabled_upcoming_5m);
+    $("#notifN8nStart").checked = Boolean(settings?.n8n?.enabled_start);
+    $("#notifN8nChatStart").checked = Boolean(settings?.n8n?.enabled_chat_on_start);
+    updateNotificationSettingsVisibility();
+  }
+
+  function gatherNotificationSettingsFromUi() {
+    const cronSelected = Boolean($("#notifMethodCron")?.checked);
+    const n8nSelected = Boolean($("#notifMethodN8n")?.checked);
+    if ((cronSelected && n8nSelected) || (!cronSelected && !n8nSelected)) {
+      throw new Error("Выберите только один способ запуска уведомлений: cron или n8n.");
+    }
+    return {
+      selected_method: cronSelected ? "cron" : "n8n",
+      cron: {
+        enabled_upcoming_5m: Boolean($("#notifCron5m")?.checked),
+        enabled_start: Boolean($("#notifCronStart")?.checked),
+        enabled_chat_on_start: Boolean($("#notifCronChatStart")?.checked),
+      },
+      n8n: {
+        enabled_upcoming_5m: Boolean($("#notifN8n5m")?.checked),
+        enabled_start: Boolean($("#notifN8nStart")?.checked),
+        enabled_chat_on_start: Boolean($("#notifN8nChatStart")?.checked),
+      },
+    };
+  }
+
+  async function saveNotificationSettingsAuto() {
+    if (!state.notificationSettingsReady) return;
+    if (state.notificationSettingsSaving) return;
+    const msg = $("#notificationSettingsMsg");
+    try {
+      state.notificationSettingsSaving = true;
+      showMsg(msg, "Сохраняем настройки уведомлений…", "info");
+      const payload = gatherNotificationSettingsFromUi();
+      const out = await apiUpdateNotificationSettings(payload);
+      applyNotificationSettingsToUi(out);
+      showMsg(msg, "Настройки уведомлений сохранены.", "success");
+    } catch (e) {
+      showMsg(msg, e.message || String(e), "error");
+    } finally {
+      state.notificationSettingsSaving = false;
     }
   }
 
@@ -1174,6 +1253,14 @@
         renderAdminUsersEditor();
       }
 
+      try {
+        const settings = await apiGetNotificationSettings();
+        applyNotificationSettingsToUi(settings);
+        state.notificationSettingsReady = true;
+      } catch (e) {
+        showMsg($("#notificationSettingsMsg"), e.message || String(e), "error");
+      }
+
       const reportsEmployeeSelect = $("#reportsEmployeeSelect");
       fillEmployeesSelect(reportsEmployeeSelect, { includeBlank: true, saveKey: "reportsEmployeeId" });
       fillEmployeesSelect($("#adminUserSelect"), { includeBlank: false });
@@ -1321,6 +1408,23 @@
         showMsg(msg, e.message || String(e), "error");
       }
     });
+
+    const notificationSettingsControls = [
+      "#notifMethodCron",
+      "#notifMethodN8n",
+      "#notifCron5m",
+      "#notifCronStart",
+      "#notifCronChatStart",
+      "#notifN8n5m",
+      "#notifN8nStart",
+      "#notifN8nChatStart",
+    ];
+    for (const selector of notificationSettingsControls) {
+      $(selector)?.addEventListener("change", () => {
+        updateNotificationSettingsVisibility();
+        saveNotificationSettingsAuto();
+      });
+    }
 
     $("#notifyDutiesBitrixBtn")?.addEventListener("click", async () => {
       const msg = $("#notifyDutiesBitrixMsg");

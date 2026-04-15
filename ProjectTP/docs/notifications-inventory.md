@@ -6,10 +6,20 @@
 
 | Канал / механизм | Событие | Кто инициирует | Где настраивается | Примечание |
 |------------------|---------|----------------|---------------------|------------|
-| **HTTP → n8n Webhook** | `duty_upcoming_2m` — за ~2 минуты до начала слота дежурит назначенный сотрудник | Вызов `POST /api/admin/notifications/duty-upcoming/dispatch` (обычно **внешний cron** или ручной вызов админом) | `N8N_WEBHOOK_URL`, `N8N_WEBHOOK_TIMEOUT_SEC` в `.env` | Если URL пустой, ответ API: `sent=false`, причина `N8N webhook is not configured` — **внешняя отправка не выполняется**. Тело JSON и пример workflow: [n8n_notification_workflow.md](../n8n_notification_workflow.md). |
+| **HTTP → n8n Webhook** | `upcoming_5m`, `start`, `upcoming_2m` (legacy) | Вызов `POST /api/admin/notifications/duty-upcoming/dispatch?mode=...` или коротких alias-эндпоинтов `/api/admin/notifications/duty-upcoming/5m` и `/api/admin/notifications/duty-upcoming/start` (обычно **внешний cron** или ручной вызов админом) | `N8N_WEBHOOK_URL`, `N8N_WEBHOOK_TIMEOUT_SEC` в `.env` | Если URL пустой, backend не отправляет n8n-событие; при этом Bitrix-каналы могут сработать независимо. |
 | **Внутри веб-интерфейса** | Входящие запросы на **обмен дежурствами** | Support создаёт запрос; второй участник видит карточки на вкладке обмена | Без отдельного env; данные в БД | Оповещение = **список в UI** + опрос `GET /api/duty-swaps/inbox` (у support раз в 30 с). Отдельного push из backend нет. |
 | **Браузер (системные уведомления)** | Не реализовано в коде приложения | — | — | Чеклист по разблокировке запроса уведомлений в браузере: [push_unblock_checklist.md](../push_unblock_checklist.md) — вспомогательный материал, не часть продукта. |
-| **Битрикс24 (входящий вебхook → `im.message.add`)** | Текст **графика на день** в выбранный диалог; то же сообщение «через 2 минуты дежурство» при вызове `duty-upcoming/dispatch`, если заданы `BITRIX_*` | Админ или **внешний cron** вызывает `POST /api/admin/notifications/duty-schedule/bitrix` (опционально `?date=…`) или скрипт [send_schedule_bitrix.py](../backend/send_schedule_bitrix.py) | `BITRIX_INCOMING_WEBHOOK_URL`, `BITRIX_NOTIFY_DIALOG_ID`, `BITRIX_WEBHOOK_TIMEOUT_SEC` в `.env` | Упоминания сотрудников: `[USER=id]…[/USER]` при заполненном `bitrix_user_id` у пользователя. Smoke: `check_bitrix_message.py`. **`DIALOG_ID` ≠ `bitrix_user_id` в смысле «куда слать»:** в карточке сотрудника хранится ID для **упоминаний**; целевой чат/личку для рассылки задаёт `BITRIX_NOTIFY_DIALOG_ID` в формате API (личка — обычно числовой ID пользователя Битрикс; **групповой чат — `chatNNN`**). На портале у служебной учётки приложения с логином `user` в БД может быть `bitrix_user_id=441509`, а рабочий диалог для `im.message.add` — **`chat441509`**, а не `441509` (иначе 400). |
+| **Битрикс24 (входящий вебхook → `im.message.add`)** | Текст **графика на день** в выбранный диалог; уведомления по №32: ЛС сотруднику за 5 минут (`mode=upcoming_5m`), ЛС сотруднику в момент старта (`mode=start`) и дублирование в общий чат при старте | Админ или **внешний cron** вызывает `POST /api/admin/notifications/duty-schedule/bitrix` (опционально `?date=…`) и/или `POST /api/admin/notifications/duty-upcoming/dispatch?mode=...` | `BITRIX_INCOMING_WEBHOOK_URL`, `BITRIX_NOTIFY_DIALOG_ID`, `BITRIX_WEBHOOK_TIMEOUT_SEC` в `.env`; у сотрудника должен быть `bitrix_user_id` | Для ЛС используется `bitrix_user_id` сотрудника как `DIALOG_ID`; для общего чата — `BITRIX_NOTIFY_DIALOG_ID`. Упоминания сотрудников в чат-сообщении: `[USER=id]…[/USER]` при заполненном `bitrix_user_id`. Smoke: `check_bitrix_message.py`. |
+
+## Управление из админки (№32)
+
+- Настройки доступны по API: `GET/PATCH /api/admin/notifications/settings`.
+- Хранятся в БД (таблица `duty_notification_settings`) и применяются в `POST /api/admin/notifications/duty-upcoming/dispatch`.
+- Выбранный способ запуска (`cron` или `n8n`) является **единственным активным**: вызов dispatch с `source`, не равным активному способу, не отправляет уведомления (`sent=false`).
+- Для каждого способа отдельно включаются/отключаются флажки:
+  - `enabled_upcoming_5m` — отправка за 5 минут;
+  - `enabled_start` — отправка в момент начала;
+  - `enabled_chat_on_start` — дублирование в общий чат при старте.
 
 ### Битрикс: HTTP 400 при «Отправить график»
 

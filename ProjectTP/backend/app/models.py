@@ -105,3 +105,23 @@ class ReportEntry(Base):
     description: Mapped[str] = mapped_column(String(2000), nullable=False)
 
     report: Mapped[DailyReport] = relationship(back_populates="entries")
+
+
+class DutyNotificationSettings(Base):
+    __tablename__ = "duty_notification_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    selected_method: Mapped[str] = mapped_column(String(8), nullable=False, default="cron")
+
+    cron_enabled_upcoming_5m: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    cron_enabled_start: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    cron_enabled_chat_on_start: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    n8n_enabled_upcoming_5m: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    n8n_enabled_start: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    n8n_enabled_chat_on_start: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_duty_notification_settings_singleton"),
+        CheckConstraint("selected_method IN ('cron','n8n')", name="ck_duty_notification_settings_method"),
+    )
