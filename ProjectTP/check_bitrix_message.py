@@ -3,7 +3,7 @@
 Ручная проверка отправки в Битрикс (im.message.add).
 
 Подставьте переменные в окружение или в ProjectTP/.env рядом с этим скриптом:
-  BITRIX_INCOMING_WEBHOOK_URL, BITRIX_NOTIFY_DIALOG_ID
+  BITRIX_INCOMING_WEBHOOK_URL, BITRIX_NOTIFY_DIALOG_ID (формат как в im.message.add: чат — chatNNN)
 
 Запуск из каталога ProjectTP:
   python3 check_bitrix_message.py

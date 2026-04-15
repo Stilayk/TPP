@@ -746,3 +746,10 @@
 - **Как исполнил:** миграция `ProjectTP/backend/alembic/versions/e4f5a6b7c8d9_users_bitrix_user_id.py`; колонка и поле в `ProjectTP/backend/app/models.py`; в `ProjectTP/backend/app/schemas.py` — `UserOut.bitrix_user_id`, `AdminBitrixUserIdRequest`, опционально в `CreateSupportUserRequest`; `ProjectTP/backend/app/routers/admin_users.py` — `PATCH /api/admin/users/{user_id}/bitrix-user`, выдача ID в `_user_out`, создание с `bitrix_user_id`; `ProjectTP/backend/app/routers/auth.py` — `UserMeOut` с полем; в `ProjectTP/backend/app/routers/duties.py` и `ProjectTP/backend/app/services.py` при сборке `UserOut` для графика и отчётов — `bitrix_user_id=None` (не светить коллегам); тест `ProjectTP/backend/tests/test_bitrix_mention.py`.
 - **Результат:** ID хранится в БД и редактируется в админке; в чат уходит график с BB-упоминаниями для заполненного ID; в `GET /api/duties` и сотруднике в отчёте поле не отдаётся.
 
+### Шаг 101
+- **Задача:** Зафиксировать эксплуатационное правило Битрикс: куда слать график (`BITRIX_NOTIFY_DIALOG_ID`) vs `bitrix_user_id` для упоминаний; служебный пользователь `user` / чат `chat441509`.
+- **Время:** 2026-04-15 (сессия)
+- **Кто исполнил:** orchestrator (агент)
+- **Как исполнил:** в `ProjectTP/docs/notifications-inventory.md` — уточнение в строке про Битрикс24: `DIALOG_ID` для `im.message.add` задаётся отдельно от поля «Битрикс» в карточке сотрудника; групповой чат — префикс `chatNNN`; пример: `bitrix_user_id=441509` у учётки `user` соответствует диалогу **`chat441509`**, голый `441509` для этого канала даёт ошибку API. В `ProjectTP/check_bitrix_message.py` восстановлен `import sys` (используется в сообщениях об ошибках).
+- **Результат:** меньше путаницы «отправить user / в чат общий» vs личка конкретного сотрудника; смок-скрипт снова импортирует `sys` корректно.
+
