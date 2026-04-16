@@ -22,13 +22,13 @@ def _mock_urlopen_success(mock_urlopen: MagicMock, body: bytes) -> None:
 @patch("app.routers.duties.urlopen")
 def test_bitrix_im_message_add_success(mock_urlopen: MagicMock) -> None:
     _mock_urlopen_success(mock_urlopen, b'{"result":123}')
-    _bitrix_im_message_add("https://example.com/rest/1/token/", "6188", "Тестовое сообщение")
+    _bitrix_im_message_add("https://example.com/rest/1/token/", "11751", "Тестовое сообщение")
     mock_urlopen.assert_called_once()
     (req,), kwargs = mock_urlopen.call_args
     assert req.full_url == "https://example.com/rest/1/token/im.message.add.json"
     assert kwargs.get("timeout") is not None
     data = json.loads(req.data.decode("utf-8"))
-    assert data == {"DIALOG_ID": "6188", "MESSAGE": "Тестовое сообщение"}
+    assert data == {"DIALOG_ID": "11751", "MESSAGE": "Тестовое сообщение"}
 
 
 @patch("app.routers.duties.urlopen")

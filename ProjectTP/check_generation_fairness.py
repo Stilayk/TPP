@@ -48,10 +48,12 @@ def main():
     support_ids = [
         u["id"]
         for u in users
-        if u.get("role") in ("support", "admin") and u.get("is_active_for_duties", True) is not False
+        if u.get("role") in ("support", "admin")
+        and u.get("is_active_for_duties", True) is not False
+        and not u.get("is_bootstrap_admin")
     ]
     if len(support_ids) < 2:
-        raise SystemExit("Need at least 2 active support or admin users in DB for fairness check.")
+        raise SystemExit("Need at least 2 active non-bootstrap support or admin users for fairness check.")
 
     # Диапазон в будущем, чтобы не задевать текущие ручные правки
     start = date.today() + timedelta(days=14)
@@ -86,8 +88,27 @@ def main():
     vals = [counts[uid] for uid in support_ids]
     delta = max(vals) - min(vals) if vals else 0
     ok = delta <= 1
-    print(f"fairness_ok={ok} delta={delta} counts={dict((k, counts[k]) for k in support_ids)}")
-    if not ok:
+
+    per_day_max = 0
+    d = start
+    while d <= end:
+        _, duties = call(opener, f"/api/duties?date={d.isoformat()}", "GET")
+        slots = duties.get("slots") or []
+        day_n: dict[int, int] = defaultdict(int)
+        for s in slots:
+            u = s.get("user")
+            if u and u.get("id") is not None:
+                day_n[int(u["id"])] += 1
+        if day_n:
+            per_day_max = max(per_day_max, max(day_n.values()))
+        d += timedelta(days=1)
+    max2_ok = per_day_max <= 2
+
+    print(
+        f"fairness_ok={ok} delta={delta} max_slots_per_user_per_day={per_day_max} max2_ok={max2_ok} "
+        f"counts={dict((k, counts[k]) for k in support_ids)}"
+    )
+    if not ok or not max2_ok:
         raise SystemExit(1)
 
 

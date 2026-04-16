@@ -10,8 +10,8 @@ def test_bitrix_im_display_name_without_bitrix() -> None:
 
 
 def test_bitrix_im_display_name_with_bbcode() -> None:
-    u = User(username="a", full_name="Петров П.", role="support", password_hash="x", bitrix_user_id=6188)
-    assert bitrix_im_display_name(u) == "[USER=6188]Петров П.[/USER]"
+    u = User(username="a", full_name="Петров П.", role="support", password_hash="x", bitrix_user_id=11751)
+    assert bitrix_im_display_name(u) == "[USER=11751]Петров П.[/USER]"
 
 
 def test_bitrix_im_display_name_admin_with_bbcode() -> None:

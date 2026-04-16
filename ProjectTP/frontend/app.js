@@ -301,6 +301,115 @@
     return state.employees;
   }
 
+  /** Одна строка таблицы «Сотрудники»; `adminCount` — число пользователей с ролью admin (для блокировки чекбокса «Админ»). */
+  function buildAdminUserEditorRow(emp, adminCount) {
+    const isAdmin = emp.role === "admin";
+    const tr = document.createElement("tr");
+    tr.dataset.userId = String(emp.id);
+
+    const tdId = document.createElement("td");
+    tdId.textContent = String(emp.id);
+
+    const tdLogin = document.createElement("td");
+    const tdName = document.createElement("td");
+    if (emp.role === "support") {
+      const inpL = document.createElement("input");
+      inpL.type = "text";
+      inpL.className = "admin-edit-username";
+      inpL.value = emp.username || "";
+      const inpN = document.createElement("input");
+      inpN.type = "text";
+      inpN.className = "admin-edit-fullname";
+      inpN.value = emp.full_name || "";
+      const dutyInactiveTag = document.createElement("span");
+      dutyInactiveTag.className = "muted admin-duty-inactive-tag";
+      dutyInactiveTag.textContent = "не в графике дежурств";
+      dutyInactiveTag.hidden = emp.is_active_for_duties !== false;
+      tdLogin.appendChild(inpL);
+      tdName.appendChild(inpN);
+      tdName.appendChild(document.createElement("br"));
+      tdName.appendChild(dutyInactiveTag);
+    } else {
+      tdLogin.textContent = emp.username || "";
+      tdName.textContent = emp.full_name || "";
+    }
+
+    const tdBitrix = document.createElement("td");
+    const inpB = document.createElement("input");
+    inpB.type = "text";
+    inpB.inputMode = "numeric";
+    inpB.className = "admin-edit-bitrix-id";
+    inpB.placeholder = "—";
+    inpB.title =
+      "ID пользователя Битрикс24 (число); для упоминания в чате при рассылке графика. У администратора сохраняется кнопкой «Сохранить ID».";
+    inpB.value = emp.bitrix_user_id != null && emp.bitrix_user_id !== undefined ? String(emp.bitrix_user_id) : "";
+    tdBitrix.appendChild(inpB);
+
+    const tdRights = document.createElement("td");
+    const lbl = document.createElement("label");
+    lbl.className = "checkbox-label";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.className = "admin-rights-checkbox";
+    cb.dataset.userId = String(emp.id);
+    if (isAdmin) cb.checked = true;
+    const isBootstrap = Boolean(emp.is_bootstrap_admin);
+    if (isAdmin && (adminCount <= 1 || isBootstrap)) {
+      cb.disabled = true;
+      cb.title = isBootstrap
+        ? "Нельзя снять права у изначального администратора (учётная запись из BOOTSTRAP_ADMIN_* на сервере)"
+        : "Нельзя снять права у последнего администратора";
+    } else {
+      cb.title = "Права администратора: вкладка «Админ» в интерфейсе";
+    }
+    const span = document.createElement("span");
+    span.className = "muted";
+    span.style.marginLeft = "6px";
+    span.textContent = "Админ";
+    lbl.appendChild(cb);
+    lbl.appendChild(span);
+    tdRights.appendChild(lbl);
+
+    const tdAct = document.createElement("td");
+    if (emp.role === "support") {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn";
+      btn.dataset.action = "saveUserProfile";
+      btn.textContent = "Сохранить";
+      tdAct.appendChild(btn);
+    } else {
+      const btnBx = document.createElement("button");
+      btnBx.type = "button";
+      btnBx.className = "btn";
+      btnBx.dataset.action = "saveBitrixId";
+      btnBx.textContent = "Сохранить ID";
+      btnBx.title = "Сохранить только ID Битрикс (логин/ФИО админа в таблице не редактируются)";
+      tdAct.appendChild(btnBx);
+    }
+
+    tr.appendChild(tdId);
+    tr.appendChild(tdLogin);
+    tr.appendChild(tdName);
+    tr.appendChild(tdBitrix);
+    tr.appendChild(tdRights);
+    tr.appendChild(tdAct);
+    return tr;
+  }
+
+  /** После сохранения одного сотрудника — обновить только его строку, не сбрасывая черновики в других строках. */
+  function replaceAdminUserEditorRow(emp) {
+    const tbody = $("#adminUsersEditorBody");
+    if (!tbody) return;
+    const old = tbody.querySelector(`tr[data-user-id="${emp.id}"]`);
+    if (!old) {
+      renderAdminUsersEditor();
+      return;
+    }
+    const adminCount = adminEmployees().length;
+    old.replaceWith(buildAdminUserEditorRow(emp, adminCount));
+  }
+
   function renderAdminUsersEditor() {
     const tbody = $("#adminUsersEditorBody");
     if (!tbody) return;
@@ -321,99 +430,7 @@
     }
 
     for (const emp of list) {
-      const isAdmin = emp.role === "admin";
-      const isSupport = emp.role === "support";
-      const tr = document.createElement("tr");
-      tr.dataset.userId = String(emp.id);
-
-      const tdId = document.createElement("td");
-      tdId.textContent = String(emp.id);
-
-      const tdLogin = document.createElement("td");
-      const tdName = document.createElement("td");
-      if (isSupport) {
-        const inpL = document.createElement("input");
-        inpL.type = "text";
-        inpL.className = "admin-edit-username";
-        inpL.value = emp.username || "";
-        const inpN = document.createElement("input");
-        inpN.type = "text";
-        inpN.className = "admin-edit-fullname";
-        inpN.value = emp.full_name || "";
-        const dutyInactiveTag = document.createElement("span");
-        dutyInactiveTag.className = "muted admin-duty-inactive-tag";
-        dutyInactiveTag.textContent = "не в графике дежурств";
-        dutyInactiveTag.hidden = emp.is_active_for_duties !== false;
-        tdLogin.appendChild(inpL);
-        tdName.appendChild(inpN);
-        tdName.appendChild(document.createElement("br"));
-        tdName.appendChild(dutyInactiveTag);
-      } else {
-        tdLogin.textContent = emp.username || "";
-        tdName.textContent = emp.full_name || "";
-      }
-
-      const tdBitrix = document.createElement("td");
-      const inpB = document.createElement("input");
-      inpB.type = "text";
-      inpB.inputMode = "numeric";
-      inpB.className = "admin-edit-bitrix-id";
-      inpB.placeholder = "—";
-      inpB.title =
-        "ID пользователя Битрикс24 (число); для упоминания в чате при рассылке графика. У администратора сохраняется кнопкой «Сохранить ID».";
-      inpB.value = emp.bitrix_user_id != null && emp.bitrix_user_id !== undefined ? String(emp.bitrix_user_id) : "";
-      tdBitrix.appendChild(inpB);
-
-      const tdRights = document.createElement("td");
-      const lbl = document.createElement("label");
-      lbl.className = "checkbox-label";
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.className = "admin-rights-checkbox";
-      cb.dataset.userId = String(emp.id);
-      if (isAdmin) cb.checked = true;
-      const isBootstrap = Boolean(emp.is_bootstrap_admin);
-      if (isAdmin && (adminCount <= 1 || isBootstrap)) {
-        cb.disabled = true;
-        cb.title = isBootstrap
-          ? "Нельзя снять права у изначального администратора (учётная запись из BOOTSTRAP_ADMIN_* на сервере)"
-          : "Нельзя снять права у последнего администратора";
-      } else {
-        cb.title = "Права администратора: вкладка «Админ» в интерфейсе";
-      }
-      const span = document.createElement("span");
-      span.className = "muted";
-      span.style.marginLeft = "6px";
-      span.textContent = "Админ";
-      lbl.appendChild(cb);
-      lbl.appendChild(span);
-      tdRights.appendChild(lbl);
-
-      const tdAct = document.createElement("td");
-      if (isSupport) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "btn";
-        btn.dataset.action = "saveUserProfile";
-        btn.textContent = "Сохранить";
-        tdAct.appendChild(btn);
-      } else {
-        const btnBx = document.createElement("button");
-        btnBx.type = "button";
-        btnBx.className = "btn";
-        btnBx.dataset.action = "saveBitrixId";
-        btnBx.textContent = "Сохранить ID";
-        btnBx.title = "Сохранить только ID Битрикс (логин/ФИО админа в таблице не редактируются)";
-        tdAct.appendChild(btnBx);
-      }
-
-      tr.appendChild(tdId);
-      tr.appendChild(tdLogin);
-      tr.appendChild(tdName);
-      tr.appendChild(tdBitrix);
-      tr.appendChild(tdRights);
-      tr.appendChild(tdAct);
-      tbody.appendChild(tr);
+      tbody.appendChild(buildAdminUserEditorRow(emp, adminCount));
     }
   }
 
@@ -1514,7 +1531,7 @@
           const updated = await apiAdminUpdateBitrixUserId(userId, bitrixVal);
           const idx = state.employees.findIndex((u) => Number(u.id) === Number(updated.id));
           if (idx >= 0) state.employees[idx] = updated;
-          renderAdminUsersEditor();
+          replaceAdminUserEditorRow(updated);
           fillEmployeesSelect($("#reportsEmployeeSelect"), { includeBlank: true, saveKey: "reportsEmployeeId" });
           fillEmployeesSelect($("#adminUserSelect"), { includeBlank: false });
           $("#adminUserSelect").value = String(updated.id);
@@ -1546,7 +1563,7 @@
         const updated2 = await apiAdminUpdateBitrixUserId(userId, bitrixVal);
         const idx = state.employees.findIndex((u) => Number(u.id) === Number(updated2.id));
         if (idx >= 0) state.employees[idx] = updated2;
-        renderAdminUsersEditor();
+        replaceAdminUserEditorRow(updated2);
         fillEmployeesSelect($("#reportsEmployeeSelect"), { includeBlank: true, saveKey: "reportsEmployeeId" });
         fillEmployeesSelect($("#adminUserSelect"), { includeBlank: false });
         $("#adminUserSelect").value = String(updated2.id);
@@ -1583,7 +1600,7 @@
         const updated = await apiAdminUpdateDutyStatus(userId, isActive);
         const idx = state.employees.findIndex((u) => Number(u.id) === Number(updated.id));
         if (idx >= 0) state.employees[idx] = updated;
-        renderAdminUsersEditor();
+        replaceAdminUserEditorRow(updated);
         fillEmployeesSelect($("#reportsEmployeeSelect"), { includeBlank: true, saveKey: "reportsEmployeeId" });
         fillEmployeesSelect($("#adminUserSelect"), { includeBlank: false });
         $("#adminUserSelect").value = String(updated.id);

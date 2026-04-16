@@ -28,6 +28,8 @@ services:
         condition: service_healthy
     environment:
       PORT: 8000
+      # Уведомления :55/:00 считают слот от локального времени процесса; без TZ в контейнере часто UTC.
+      TZ: ${TZ:-UTC}
       # Внутри сети compose хост БД — `db`, не 127.0.0.1 из .env разработчика.
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-duty}
       EXPORTS_DIR: /exports

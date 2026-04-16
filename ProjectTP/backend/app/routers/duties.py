@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import random
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 from typing import Optional
 
@@ -13,8 +14,11 @@ from urllib.request import Request as UrlRequest, urlopen
 from app.bitrix_mention import bitrix_im_display_name
 from app.config import settings
 from app.database import db_session, get_db
-from app.deps import require_admin, require_support_or_admin
+from app.deps import is_bootstrap_admin_account, require_admin, require_support_or_admin
 from app.duty_slots import SLOT_COUNT, duty_slot_for_dt, slot_start_time_str
+
+# Максимум слотов дежурства на одного человека в календарный день (автогенерация + ручное сохранение графика).
+MAX_DUTY_SLOTS_PER_USER_PER_DAY = 2
 from app.models import DutyAssignment, DutyNotificationSettings, User
 from app.schemas import (
     DutiesBatchRequest,
@@ -31,6 +35,26 @@ from app.schemas import (
 )
 
 router = APIRouter()
+
+
+def _duty_slot_counts_per_user(
+    tx_db,
+    duty_date: date,
+    slot_updates: list[tuple[int, int]],
+) -> dict[int, int]:
+    """Слияние текущих назначений на дату с правками по слотам → число слотов на пользователя за день."""
+    by_slot: dict[int, int] = {}
+    rows = tx_db.execute(select(DutyAssignment).where(DutyAssignment.date == duty_date)).scalars().all()
+    for r in rows:
+        by_slot[int(r.slot)] = int(r.support_user_id)
+    for slot, user_id in slot_updates:
+        by_slot[int(slot)] = int(user_id)
+    per_user: dict[int, int] = defaultdict(int)
+    for slot in range(0, SLOT_COUNT):
+        uid = by_slot.get(slot)
+        if uid is not None:
+            per_user[uid] += 1
+    return dict(per_user)
 
 
 def _bitrix_messaging_pair() -> tuple[str, str] | None:
@@ -176,10 +200,14 @@ def generate_duties(payload: DutiesGenerateRequest, current_user: User = Depends
         .where(User.role.in_(("support", "admin")), User.is_active_for_duties == True)  # noqa: E712
         .order_by(User.id)
     ).scalars().all()
-    if not support_users:
-        raise HTTPException(status_code=400, detail="No users active for duties (support or admin)")
+    pool_users = [u for u in support_users if not is_bootstrap_admin_account(u)]
+    if not pool_users:
+        raise HTTPException(
+            status_code=400,
+            detail="No users eligible for auto-generation: bootstrap administrator is excluded; add active staff or grant admin/support to others",
+        )
 
-    user_ids = [u.id for u in support_users]
+    user_ids = [u.id for u in pool_users]
 
     existing_in_range: dict[tuple[date, int], int] = {}
     existing_rows = db.execute(
@@ -222,6 +250,13 @@ def generate_duties(payload: DutiesGenerateRequest, current_user: User = Depends
 
         for day_index in range((payload.end_date - payload.start_date).days + 1):
             current_day = payload.start_date + timedelta(days=day_index)
+            day_rows = tx_db.execute(
+                select(DutyAssignment.support_user_id, func.count())
+                .where(DutyAssignment.date == current_day)
+                .group_by(DutyAssignment.support_user_id)
+            ).all()
+            today_assign: dict[int, int] = {int(uid): int(c) for uid, c in day_rows}
+
             for slot in range(0, SLOT_COUNT):
                 key = (current_day, slot)
                 if (not payload.overwrite) and key in existing_in_range:
@@ -229,12 +264,17 @@ def generate_duties(payload: DutiesGenerateRequest, current_user: User = Depends
                     counts[chosen_uid] = counts.get(chosen_uid, 0) + 1
                     continue
 
-                min_count = min(counts.values())
-                candidates = [uid for uid, c in counts.items() if c == min_count]
+                eligible = [uid for uid in user_ids if today_assign.get(uid, 0) < MAX_DUTY_SLOTS_PER_USER_PER_DAY]
+                if not eligible:
+                    eligible = list(user_ids)
+
+                min_count = min(counts[uid] for uid in eligible)
+                candidates = [uid for uid in eligible if counts[uid] == min_count]
                 chosen_uid = rng.choice(candidates)
 
                 tx_db.add(DutyAssignment(date=current_day, slot=slot, support_user_id=chosen_uid))
                 counts[chosen_uid] = counts.get(chosen_uid, 0) + 1
+                today_assign[chosen_uid] = today_assign.get(chosen_uid, 0) + 1
                 created += 1
 
         tx_db.commit()
@@ -274,9 +314,21 @@ def duties_batch(payload: DutiesBatchRequest, current_user: User = Depends(requi
                 detail="Cannot assign an employee who is inactive for duties",
             )
 
+    slot_updates = [(a.slot, a.user_id) for a in payload.assignments]
     created = 0
     updated = 0
     with db_session() as tx_db:
+        merged_counts = _duty_slot_counts_per_user(tx_db, payload.date, slot_updates)
+        bad = [uid for uid, c in merged_counts.items() if c > MAX_DUTY_SLOTS_PER_USER_PER_DAY]
+        if bad:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"A user cannot have more than {MAX_DUTY_SLOTS_PER_USER_PER_DAY} duty slots on the same day "
+                    f"(user_ids={bad})"
+                ),
+            )
+
         for a in payload.assignments:
             existing = tx_db.execute(
                 select(DutyAssignment).where(DutyAssignment.date == payload.date, DutyAssignment.slot == a.slot)
