@@ -206,6 +206,12 @@
     });
   }
 
+  async function apiTestDutyNotification(userId) {
+    return apiFetchJson(`/api/admin/notifications/duty-test?user_id=${encodeURIComponent(String(userId))}`, {
+      method: "POST",
+    });
+  }
+
   async function apiChangeOwnPassword(oldPassword, newPassword) {
     return apiFetchJson("/api/me/password", {
       method: "POST",
@@ -294,10 +300,25 @@
     return state.employees.filter((e) => e.role === "admin");
   }
 
+  function fillNotifTestUserSelect() {
+    const sel = $("#notifTestUserId");
+    if (!sel) return;
+    sel.innerHTML = "";
+    const list = [...state.employees].sort((a, b) => Number(a.id) - Number(b.id));
+    for (const emp of list) {
+      const opt = document.createElement("option");
+      opt.value = String(emp.id);
+      opt.textContent = `${emp.full_name || emp.username} (id ${emp.id})`;
+      sel.appendChild(opt);
+    }
+    if (list.length) sel.value = String(list[0].id);
+  }
+
   async function loadEmployees() {
     const users = await apiFetchJson("/api/admin/users");
     state.employees = Array.isArray(users) ? users : [];
     renderAdminUsersEditor();
+    fillNotifTestUserSelect();
     return state.employees;
   }
 
@@ -471,51 +492,21 @@
     }
   }
 
-  function selectedNotificationMethod() {
-    return $("#notifMethodN8n")?.checked ? "n8n" : "cron";
-  }
-
-  function updateNotificationSettingsVisibility() {
-    const method = selectedNotificationMethod();
-    const cronBlock = $("#notifCronSettingsBlock");
-    const n8nBlock = $("#notifN8nSettingsBlock");
-    if (cronBlock) cronBlock.hidden = method !== "cron";
-    if (n8nBlock) n8nBlock.hidden = method !== "n8n";
-  }
-
   function applyNotificationSettingsToUi(settings) {
     if (!settings) return;
-    $("#notifMethodCron").checked = settings.selected_method === "cron";
-    $("#notifMethodN8n").checked = settings.selected_method === "n8n";
-
-    $("#notifCron5m").checked = Boolean(settings?.cron?.enabled_upcoming_5m);
-    $("#notifCronStart").checked = Boolean(settings?.cron?.enabled_start);
-    $("#notifCronChatStart").checked = Boolean(settings?.cron?.enabled_chat_on_start);
-
-    $("#notifN8n5m").checked = Boolean(settings?.n8n?.enabled_upcoming_5m);
-    $("#notifN8nStart").checked = Boolean(settings?.n8n?.enabled_start);
-    $("#notifN8nChatStart").checked = Boolean(settings?.n8n?.enabled_chat_on_start);
-    updateNotificationSettingsVisibility();
+    const sch = $("#notifSchedulerEnabled");
+    if (sch) sch.checked = Boolean(settings.scheduler_enabled);
+    $("#notif5m").checked = Boolean(settings.enabled_upcoming_5m);
+    $("#notifStart").checked = Boolean(settings.enabled_start);
+    $("#notifChatStart").checked = Boolean(settings.enabled_chat_on_start);
   }
 
   function gatherNotificationSettingsFromUi() {
-    const cronSelected = Boolean($("#notifMethodCron")?.checked);
-    const n8nSelected = Boolean($("#notifMethodN8n")?.checked);
-    if ((cronSelected && n8nSelected) || (!cronSelected && !n8nSelected)) {
-      throw new Error("Выберите только один способ запуска уведомлений: cron или n8n.");
-    }
     return {
-      selected_method: cronSelected ? "cron" : "n8n",
-      cron: {
-        enabled_upcoming_5m: Boolean($("#notifCron5m")?.checked),
-        enabled_start: Boolean($("#notifCronStart")?.checked),
-        enabled_chat_on_start: Boolean($("#notifCronChatStart")?.checked),
-      },
-      n8n: {
-        enabled_upcoming_5m: Boolean($("#notifN8n5m")?.checked),
-        enabled_start: Boolean($("#notifN8nStart")?.checked),
-        enabled_chat_on_start: Boolean($("#notifN8nChatStart")?.checked),
-      },
+      scheduler_enabled: Boolean($("#notifSchedulerEnabled")?.checked),
+      enabled_upcoming_5m: Boolean($("#notif5m")?.checked),
+      enabled_start: Boolean($("#notifStart")?.checked),
+      enabled_chat_on_start: Boolean($("#notifChatStart")?.checked),
     };
   }
 
@@ -1410,21 +1401,36 @@
     });
 
     const notificationSettingsControls = [
-      "#notifMethodCron",
-      "#notifMethodN8n",
-      "#notifCron5m",
-      "#notifCronStart",
-      "#notifCronChatStart",
-      "#notifN8n5m",
-      "#notifN8nStart",
-      "#notifN8nChatStart",
+      "#notifSchedulerEnabled",
+      "#notif5m",
+      "#notifStart",
+      "#notifChatStart",
     ];
     for (const selector of notificationSettingsControls) {
       $(selector)?.addEventListener("change", () => {
-        updateNotificationSettingsVisibility();
         saveNotificationSettingsAuto();
       });
     }
+
+    $("#notifTestBtn")?.addEventListener("click", async () => {
+      const msg = $("#notifTestMsg");
+      const uid = $("#notifTestUserId")?.value;
+      if (!uid) {
+        showMsg(msg, "Нет сотрудников в списке.", "error");
+        return;
+      }
+      try {
+        showMsg(msg, "Отправка тестового сообщения в Битрикс…", "info");
+        const out = await apiTestDutyNotification(uid);
+        if (out.sent) {
+          showMsg(msg, out.message || "Отправлено.", "success");
+        } else {
+          showMsg(msg, out.reason || "Не удалось отправить.", "error");
+        }
+      } catch (e) {
+        showMsg(msg, e.message || String(e), "error");
+      }
+    });
 
     $("#notifyDutiesBitrixBtn")?.addEventListener("click", async () => {
       const msg = $("#notifyDutiesBitrixMsg");

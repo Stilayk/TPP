@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func, select
@@ -10,6 +12,8 @@ from app.database import db_session, run_migrations
 from app.models import User
 from app.routers import register_routers
 from app.security import hash_password
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Support Duty & Reports API", redirect_slashes=False)
 
@@ -50,6 +54,22 @@ def on_startup() -> None:
 
     with db_session() as db:
         bootstrap_admin_if_needed(db)
+    try:
+        from app.notification_scheduler import start_notification_scheduler
+
+        start_notification_scheduler()
+    except Exception:
+        logger.exception("Встроенный планировщик уведомлений не запущен; API работает без авторассылки по расписанию")
+
+
+@app.on_event("shutdown")
+def on_shutdown() -> None:
+    try:
+        from app.notification_scheduler import stop_notification_scheduler
+
+        stop_notification_scheduler()
+    except Exception:
+        logger.exception("Ошибка при остановке планировщика уведомлений")
 
 
 app.add_middleware(

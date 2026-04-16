@@ -40,6 +40,8 @@ services:
       BITRIX_INCOMING_WEBHOOK_URL: ${BITRIX_INCOMING_WEBHOOK_URL:-}
       BITRIX_NOTIFY_DIALOG_ID: ${BITRIX_NOTIFY_DIALOG_ID:-}
       BITRIX_WEBHOOK_TIMEOUT_SEC: ${BITRIX_WEBHOOK_TIMEOUT_SEC:-10}
+      TZ: "${TZ:-UTC}"
+      N8N_DUTY_WEBHOOK_ENABLED: "${N8N_DUTY_WEBHOOK_ENABLED:-false}"
       BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       BOOTSTRAP_ADMIN_FULLNAME: ${BOOTSTRAP_ADMIN_FULLNAME:-}
@@ -47,15 +49,11 @@ services:
       - ./exports:/exports
     # CMD-SHELL: надёжно и в Docker, и в Podman (exec-форма с python -c и запятыми в Podman давала SyntaxError).
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')\"",
-        ]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 60s
+      test: ["CMD", "python3", "/app/backend/docker_healthcheck.py"]
+      interval: 15s
+      timeout: 8s
+      retries: 8
+      start_period: 90s
     restart: unless-stopped
 
   nginx:

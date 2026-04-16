@@ -16,7 +16,7 @@
 - Смену статуса задачи и следующего шага фиксировать в **Лог шагов** (и при необходимости в `TASKS.md`); блоки **Текущий статус задачи** и **Следующий шаг** не переписывать без договорённости с пользователем (см. `CONTINUE_PROMPT.md`). Строку **ACTIVE** в блоке ниже **можно** обновлять при смене фокуса.
 
 ## Якорь ACTIVE
-- **ACTIVE:** **№32** (уведомления: ЛС за 5 минут + ЛС/общий чат в момент старта) — **выполнено**. Дальше по продукту — **№33** (QR), **№27** (пауза / чекбоксы инструкции).
+- **ACTIVE:** Уведомления Битрикс (№32) — реализация доведена до прод (планировщик, тест ЛС, Docker/миграции, фиксы импорта и SQLAlchemy). Дальше по бэклогу — **№33** (QR), **№27** (чекбоксы инструкции); полевая проверка уведомлений на стенде — по решению команды.
 
 ## Роли субагентов
 - `orchestrator`: декомпозирует работу, назначает следующего исполнителя, снимает блокеры.
@@ -773,4 +773,12 @@
 - **Кто исполнил:** frontend + orchestrator
 - **Как исполнил:** в `ProjectTP/frontend/index.html` для выбора способа запуска `cron/n8n` чекбоксы заменены на radio-кнопки (`name="notificationMethod"`), удалена кнопка ручного сохранения; блоки настроек разделены на `#notifCronSettingsBlock` и `#notifN8nSettingsBlock`. В `ProjectTP/frontend/app.js` добавлены автосохранение настроек на `change`, управление видимостью только активного блока и статусные сообщения сохранения; в `ProjectTP/frontend/styles.css` добавлены стили: круглые переключатели для метода запуска и квадратные чекбоксы для множественного выбора уведомлений.
 - **Результат:** переключение способа и галочек применяется сразу по клику из админ-панели; настройки неактивного способа скрыты.
+
+### Шаг 105
+- **Задача:** Довести уведомления о дежурствах (Битрикс ЛС + общий чат), встроенный планировщик, тест из админки, устойчивость Docker и исправления регрессий на проде.
+- **Время:** 2026-04-16 (сессия)
+- **Кто исполнил:** orchestrator (агент)
+- **Как исполнил:** вынесена логика в `ProjectTP/backend/app/bitrix_notify.py` (в т.ч. нормализация ID чата `2237493` → `chat2237493`), `ProjectTP/backend/app/duty_notifications.py` (dispatch, единые настройки, `POST /api/admin/notifications/duty-test`); `ProjectTP/backend/app/notification_scheduler.py` (APScheduler :55/:00 по `TZ`, ленивый импорт APScheduler); `ProjectTP/main.py` — обёртка старта/остановки планировщика; миграция `ProjectTP/backend/alembic/versions/g8h9i0j1k2l3_duty_notification_scheduler_enabled.py` (`scheduler_enabled`, идемпотентный DDL); `ProjectTP/backend/entrypoint.sh` — проверка непустого `SESSION_SECRET`; `ProjectTP/backend/docker_healthcheck.py` + healthcheck в `ProjectTP/docker-compose.yml` (`python3`, увеличен `start_period`); `ProjectTP/backend/requirements.txt` — `apscheduler<4`, `tzdata`; UI: три чекбокса + планировщик + «Отправить тест» (`ProjectTP/frontend/index.html`, `ProjectTP/frontend/app.js`, `ProjectTP/frontend/styles.css`). Исправления после прод: в `duty_notifications.py` заменён несуществующий импорт `UrlRequest` на `urllib.request.Request as UrllibRequest`; для теста уведомлений — `db.execute(...).scalars().first()` вместо `.first()` (SQLAlchemy 2.0, устранение 500). Обновлены `ProjectTP/backend/send_schedule_bitrix.py`, `ProjectTP/.env.example`.
+- **Результат:** happy-path админки для теста ЛС и автоматической рассылки согласован с кодом; контейнер backend не должен падать на импорте и healthcheck при корректном `.env`.
+- **Статус:** success
 

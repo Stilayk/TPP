@@ -111,6 +111,8 @@ class DutyNotificationSettings(Base):
     __tablename__ = "duty_notification_settings"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # Встроенный планировщик backend (APScheduler): вызовы :55 и :00 по TZ процесса
+    scheduler_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     selected_method: Mapped[str] = mapped_column(String(8), nullable=False, default="cron")
 
     cron_enabled_upcoming_5m: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

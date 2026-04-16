@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!-- При деплое в подпапку добавьте: <meta name="api-base" content="/имя_подпапки" /> -->
     <title>Техподдержка</title>
-    <link rel="stylesheet" href="./styles.css?v=20260408-11" />
+    <link rel="stylesheet" href="./styles.css?v=20260416-1" />
   </head>
   <body>
     <header class="topbar">
@@ -148,56 +148,42 @@
           <div class="card">
             <h3>Уведомления</h3>
             <p class="muted">
-              В чат из настроек сервера (<code>BITRIX_NOTIFY_DIALOG_ID</code>) уходит текстовый график на <strong>сегодня</strong> (дата браузера). Ниже — управление способом запуска уведомлений о дежурствах.
+              Личные сообщения в Битрикс24 отправляются на числовой ID из колонки «Битрикс» у сотрудника. Дубль в общий чат — в диалог из
+              <code>BITRIX_NOTIFY_DIALOG_ID</code> (например <code>2237493</code> или <code>chat2237493</code>). На сервере нужны
+              <code>BITRIX_INCOMING_WEBHOOK_URL</code> и часовой пояс <code>TZ</code> (для встроенного планировщика). Текстовый график на сегодня —
+              отдельная кнопка ниже.
             </p>
             <div class="toolbar">
-              <div class="field checkbox">
-                <label class="checkbox-label">
-                  <input id="notifMethodCron" type="radio" name="notificationMethod" />
-                  Способ запуска: cron
-                </label>
-              </div>
-              <div class="field checkbox">
-                <label class="checkbox-label">
-                  <input id="notifMethodN8n" type="radio" name="notificationMethod" />
-                  Способ запуска: n8n
-                </label>
-              </div>
+              <label class="checkbox-label">
+                <input id="notifSchedulerEnabled" type="checkbox" />
+                Встроенный планировщик: автоотправка в <strong>:55</strong> и <strong>:00</strong> каждого часа (по <code>TZ</code>)
+              </label>
             </div>
-            <div id="notifCronSettingsBlock" class="notification-settings-block">
-              <div class="muted"><strong>Настройки уведомлений: cron</strong></div>
+            <div class="notification-settings-block">
+              <div class="muted"><strong>Какие уведомления отправлять</strong></div>
               <div class="toolbar">
                 <label class="checkbox-label">
-                  <input id="notifCron5m" type="checkbox" />
-                  Уведомления за 5 минут
+                  <input id="notif5m" type="checkbox" />
+                  Личное: за 5 минут до начала дежурства
                 </label>
                 <label class="checkbox-label">
-                  <input id="notifCronStart" type="checkbox" />
-                  Уведомления о начале дежурства
+                  <input id="notifStart" type="checkbox" />
+                  Личное: в момент начала дежурства
                 </label>
                 <label class="checkbox-label">
-                  <input id="notifCronChatStart" type="checkbox" />
-                  Уведомления в общий чат
+                  <input id="notifChatStart" type="checkbox" />
+                  Общий чат: в момент начала дежурства (кто заступил)
                 </label>
               </div>
             </div>
-            <div id="notifN8nSettingsBlock" class="notification-settings-block" hidden>
-              <div class="muted"><strong>Настройки уведомлений: n8n</strong></div>
-              <div class="toolbar">
-                <label class="checkbox-label">
-                  <input id="notifN8n5m" type="checkbox" />
-                  Уведомления за 5 минут
-                </label>
-                <label class="checkbox-label">
-                  <input id="notifN8nStart" type="checkbox" />
-                  Уведомления о начале дежурства
-                </label>
-                <label class="checkbox-label">
-                  <input id="notifN8nChatStart" type="checkbox" />
-                  Уведомления в общий чат
-                </label>
+            <div class="actions toolbar wrap">
+              <div class="field">
+                <label for="notifTestUserId">Проверка ЛС в Битрикс</label>
+                <select id="notifTestUserId"></select>
               </div>
+              <button id="notifTestBtn" class="btn" type="button">Отправить тест</button>
             </div>
+            <div id="notifTestMsg" class="msg info" hidden></div>
             <div class="actions">
               <button id="notifyDutiesBitrixBtn" class="btn" type="button">Отправить график на сегодня в Битрикс</button>
             </div>
@@ -364,7 +350,7 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260415-4" defer></script>
+    <script src="./app.js?v=20260416-1" defer></script>
   </body>
 </html>
 

@@ -195,22 +195,29 @@ class DutyNotificationDispatchOut(BaseModel):
     bitrix_chat_sent: Optional[bool] = None
 
 
-class DutyNotificationMethodSettings(BaseModel):
+class DutyNotificationSettingsOut(BaseModel):
+    """Единый набор флагов (хранение в БД по-прежнему дублируется в cron_* / n8n_* для совместимости)."""
+
+    scheduler_enabled: bool
     enabled_upcoming_5m: bool
     enabled_start: bool
     enabled_chat_on_start: bool
 
 
-class DutyNotificationSettingsOut(BaseModel):
-    selected_method: str
-    cron: DutyNotificationMethodSettings
-    n8n: DutyNotificationMethodSettings
-
-
 class DutyNotificationSettingsUpdateRequest(BaseModel):
-    selected_method: str = Field(pattern="^(cron|n8n)$")
-    cron: DutyNotificationMethodSettings
-    n8n: DutyNotificationMethodSettings
+    scheduler_enabled: bool
+    enabled_upcoming_5m: bool
+    enabled_start: bool
+    enabled_chat_on_start: bool
+
+
+class DutyTestNotificationOut(BaseModel):
+    sent: bool
+    reason: Optional[str] = None
+    user_id: int
+    full_name: str
+    message: str
+    bitrix_personal_sent: bool
 
 
 class DutyScheduleBitrixDispatchOut(BaseModel):
