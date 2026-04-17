@@ -10,11 +10,13 @@ from fastapi import HTTPException
 from sqlalchemy import delete, func, select
 
 from app.deps import is_bootstrap_admin_account
-from app.duty_slots import SLOT_09_00_INDEX, SLOT_COUNT
+from app.duty_slots import SLOT_09_00_INDEX, SLOT_COUNT, SLOT_START_HOUR
 from app.models import DutyAssignment, User
 
 MAX_DUTIES_PER_DAY = 2
 USERNAME_09 = "user"
+MORNING_FIRST_SLOT_INDEX = 7 - SLOT_START_HOUR
+MORNING_SECOND_SLOT_INDEX = 8 - SLOT_START_HOUR
 
 
 def generation_pool_users(db) -> list[User]:
@@ -152,6 +154,7 @@ def run_generation(
         yesterday_counts = _yesterday_counts(tx_db, yesterday, pool_ids)
         day_counts: dict[int, int] = defaultdict(int)
 
+        morning_pair_user_id: int | None = None
         for slot in slot_order:
             key = (current_day, slot)
             if (not overwrite) and key in existing_in_range:
@@ -159,10 +162,14 @@ def run_generation(
                 if uid in pool_ids_set:
                     day_counts[uid] = day_counts.get(uid, 0) + 1
                     global_counts[uid] = global_counts.get(uid, 0) + 1
+                    if slot == MORNING_FIRST_SLOT_INDEX:
+                        morning_pair_user_id = uid
                 continue
 
             if slot == SLOT_09_00_INDEX:
                 uid = nine_user.id
+            elif slot == MORNING_SECOND_SLOT_INDEX and morning_pair_user_id is not None:
+                uid = morning_pair_user_id
             else:
                 uid = _pick_user_for_slot(
                     pool_ids,
@@ -172,6 +179,8 @@ def run_generation(
                     pool_gt_slots,
                     rng,
                 )
+                if slot == MORNING_FIRST_SLOT_INDEX:
+                    morning_pair_user_id = uid
 
             tx_db.add(DutyAssignment(date=current_day, slot=slot, support_user_id=uid))
             day_counts[uid] = day_counts.get(uid, 0) + 1
