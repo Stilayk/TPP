@@ -9,9 +9,13 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import settings
 from app.database import db_session, run_migrations
+from app.duty_notifications_runtime import apply_monkeypatches
 from app.models import User
-from app.routers import register_routers
 from app.security import hash_password
+
+apply_monkeypatches()
+
+from app.routers import register_routers
 
 logger = logging.getLogger(__name__)
 

@@ -5,6 +5,8 @@ from datetime import date, datetime, time
 SLOT_START_HOUR = 7
 SLOT_COUNT = 11
 SLOT_MAX_INDEX = SLOT_COUNT - 1
+# Слот часа 09:00 (индекс = час − SLOT_START_HOUR).
+SLOT_09_00_INDEX = 9 - SLOT_START_HOUR
 
 
 def slot_start_time_str(slot: int) -> str:
