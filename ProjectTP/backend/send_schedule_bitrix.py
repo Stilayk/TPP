@@ -16,6 +16,7 @@ _root = Path("/app/backend") if Path("/app/backend/app").is_dir() else Path.cwd(
 sys.path.insert(0, str(_root))
 
 from app.bitrix_mention import bitrix_im_display_name  # noqa: E402
+from app.bitrix_notify import normalize_bitrix_chat_dialog_id  # noqa: E402
 from app.database import db_session  # noqa: E402
 from app.duty_slots import SLOT_COUNT, slot_start_time_str  # noqa: E402
 from app.models import DutyAssignment, User  # noqa: E402
@@ -31,7 +32,7 @@ def main() -> int:
     target = _parse_date_arg()
     # compose пробрасывает BITRIX_* в окружение; не зависим от полей Settings в образе
     bx_url = (os.environ.get("BITRIX_INCOMING_WEBHOOK_URL") or "").strip().rstrip("/") + "/"
-    dialog = (os.environ.get("BITRIX_NOTIFY_DIALOG_ID") or "").strip()
+    dialog = normalize_bitrix_chat_dialog_id(os.environ.get("BITRIX_NOTIFY_DIALOG_ID") or "")
     if not bx_url or bx_url == "/" or not dialog:
         print("В окружении backend задайте BITRIX_INCOMING_WEBHOOK_URL и BITRIX_NOTIFY_DIALOG_ID.", file=sys.stderr)
         return 1

@@ -30,10 +30,15 @@ class Settings(BaseSettings):
     CORS_ALLOW_ORIGINS: str = ""  # comma-separated
     N8N_WEBHOOK_URL: str = ""
     N8N_WEBHOOK_TIMEOUT_SEC: int = 5
+    # Отправка JSON в n8n при dispatch уведомлений о дежурствах (по умолчанию выключено; только Битрикс).
+    N8N_DUTY_WEBHOOK_ENABLED: bool = False
+
+    # Часовой пояс для встроенного планировщика уведомлений (IANA), напр. Europe/Moscow
+    TZ: str = "UTC"
 
     # Битрикс24: базовый URL входящего вебхука (…/rest/<user>/<token>/), без метода в конце.
     BITRIX_INCOMING_WEBHOOK_URL: str = ""
-    # Куда писать: для лички — ID пользователя Битрикс строкой (например 6188); для чата — chatNNN.
+    # Общий чат для дубля при старте слота: число 2237493 → chat2237493; см. bitrix_notify.normalize_bitrix_chat_dialog_id
     BITRIX_NOTIFY_DIALOG_ID: str = ""
     BITRIX_WEBHOOK_TIMEOUT_SEC: int = 10
 

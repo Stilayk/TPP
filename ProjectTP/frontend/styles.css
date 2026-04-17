@@ -137,19 +137,8 @@ body:not(.admin-user) #loadReportsBtn {
   margin-top: 2px;
 }
 
-/* Переключатели способа запуска (cron/n8n): круглые и взаимоисключающие */
-input[type="radio"][name="notificationMethod"] {
-  width: 1.05rem;
-  height: 1.05rem;
-  min-width: 1.05rem;
-  margin: 0;
-  accent-color: #2563eb;
-  cursor: pointer;
-}
-
-/* Галочки конкретных уведомлений: квадратные, множественный выбор */
-#notifCronSettingsBlock input[type="checkbox"],
-#notifN8nSettingsBlock input[type="checkbox"] {
+/* Галочки уведомлений */
+.notification-settings-block input[type="checkbox"] {
   width: 1.05rem;
   height: 1.05rem;
   min-width: 1.05rem;

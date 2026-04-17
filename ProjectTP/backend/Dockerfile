@@ -12,11 +12,12 @@ COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir --no-compile -r requirements.txt
 
 COPY entrypoint.sh ./entrypoint.sh
+COPY docker_healthcheck.py ./docker_healthcheck.py
 COPY alembic.ini ./alembic.ini
 COPY alembic ./alembic
 COPY app ./app
 
-RUN chmod +x ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh ./docker_healthcheck.py
 
 EXPOSE 8000
 
