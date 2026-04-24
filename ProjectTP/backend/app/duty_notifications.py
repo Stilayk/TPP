@@ -216,7 +216,7 @@ def dispatch_duty_notification(
     else:  # start
         personal_message = f"Ваше дежурство началось: {start_time}, дата {assignment.date.isoformat()}."
         chat_message = (
-            f"В дежурство вступил(а): {bitrix_im_display_name(user)}, слот {start_time}, дата {assignment.date.isoformat()}."
+            f"На следующий час дежурным заступает {bitrix_im_display_name(user)}, слот {start_time}, дата {assignment.date.isoformat()}."
         )
         need_personal = True
         need_chat = enabled_chat_on_start
@@ -397,13 +397,13 @@ def send_test_duty_notification(db, *, user_id: int) -> DutyTestNotificationOut:
     if assignment:
         st = slot_start_time_str(assignment.slot)
         message = (
-            f"Тестовое уведомление: сегодня ({today.isoformat()}) ваше дежурство в {st}. "
-            f"Проверка доставки в Битрикс по ID {user.bitrix_user_id or '—'}."
+            f"Уведомление: сегодня ваше дежурство в {st}. "
+            "Хорошего вам дня. Обнял, приподнял, покружил, поставил."
         )
     else:
         message = (
-            f"Тестовое уведомление: на сегодня ({today.isoformat()}) у вас нет слота в графике дежурств. "
-            f"Проверка доставки в Битрикс по ID {user.bitrix_user_id or '—'}."
+            "Уведомление: на сегодня у вас нет слота в графике дежурств. "
+            "Хорошего вам дня. Обнял, приподнял, покружил, поставил."
         )
 
     bx = bitrix_webhook_base_url()
