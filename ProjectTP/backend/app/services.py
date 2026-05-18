@@ -11,6 +11,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment
 
 from app.config import settings
+from app.employee_exit_blocks import compose_employee_exit_instruction
 from app.models import DailyReport, User
 from app.schemas import DailyReportOut, ReportEntryOut, UserOut
 
@@ -20,6 +21,28 @@ except ImportError:  # pragma: no cover
     Document = None  # type: ignore[misc, assignment]
 
 EXPORT_FILENAME_RE = re.compile(r"^report_(\d+)_\d{4}-\d{2}-\d{2}\.xlsx$")
+
+_WS_INLINE = re.compile(r"[ \t]{2,}")
+
+
+def normalize_employee_exit_instruction_text(text: str) -> str:
+    """Убирает лишние пустые строки и схлопывает повторяющиеся пробелы в строках (общий вид и Word)."""
+    text = (text or "").strip()
+    if not text:
+        return ""
+    chunks: list[str] = []
+    for raw_chunk in re.split(r"\n\s*\n+", text):
+        lines: list[str] = []
+        for raw_ln in raw_chunk.splitlines():
+            ln = raw_ln.strip()
+            if not ln:
+                continue
+            ln = _WS_INLINE.sub(" ", ln).strip()
+            if ln:
+                lines.append(ln)
+        if lines:
+            chunks.append("\n".join(lines))
+    return "\n\n".join(chunks)
 
 
 def is_safe_export_filename(filename: str) -> bool:
@@ -36,40 +59,54 @@ def exports_dir() -> Path:
     return p
 
 
-def build_employee_exit_instruction(fio: str, login: str, password: str, domain: str) -> str:
-    fio = (fio or "").strip()
-    login = (login or "").strip()
-    password = (password or "").strip()
-    domain = (domain or "").strip()
-    domain_login_example = f"{domain}\\{login}"
-    return (
-        f"Добрый день, {fio}, я системный администратор в компании Sokolov, вам выдано оборудование.\n\n"
-        "При включении ноутбука открывается bitlocker - стандартный пароль от него Sokolov2026 \n"
-        f"Ваш логин - {login}, ваш пароль, при первом входе попросит сменить - {password}.\n\n"
-        f"Ваш домен — {domain}.\n"
-        f"Пример учётной записи в формате домена: {domain_login_example}\n\n"
-        "Вход в сервисы осуществляется по доменной учётной записи.\n\n"
-        "После входа в учетную запись вы можете войти в информационные ресурсы компании, почту, битрикс24. \n"
-        "При входе в Битрикс у вас запросит адрес сайта - 'portal.hpdd.ru', логин и пароль от вашей доменной учётной записи.\n"
-        "Для входа в Outlook также используется доменная учётная запись.\n"
-        f"При входе в ZOOM нужно выбрать вход через Active Directory и ввести учётную запись в формате {domain_login_example} и пароль.\n\n"
-        "Важно:\n"
-        "• Папка 'Загрузки' автоматически очищается при перезагрузке.\n"
-        "• Папка 'Документы' синхронизируется с сервером, для удобства при смене оборудования - данные будут синхронизированы.\n\n"
-        "По всем вопросам вы можете набрать по номеру 8 800 1000 750 (добавочный уточняйте у руководителя или в службе поддержки)."
-    )
+def build_employee_exit_instruction(
+    fio: str, login: str, password: str, domain: str, blocks: list[str] | None = None
+) -> str:
+    raw = compose_employee_exit_instruction(fio, login, password, domain, blocks=blocks)
+    return normalize_employee_exit_instruction_text(raw)
 
 
-def build_employee_exit_instruction_docx_bytes(fio: str, login: str, password: str, domain: str) -> bytes:
+def build_employee_exit_instruction_docx_bytes(
+    fio: str, login: str, password: str, domain: str, blocks: list[str] | None = None
+) -> bytes:
     if Document is None:
         raise HTTPException(
             status_code=503,
             detail="Генерация Word недоступна: в образе не установлен пакет python-docx. Пересоберите backend.",
         )
-    text = build_employee_exit_instruction(fio, login, password, domain)
+    from docx.enum.text import WD_BREAK, WD_LINE_SPACING
+    from docx.oxml.ns import qn
+    from docx.shared import Pt
+
+    def _apply_instruction_run_font(run) -> None:
+        run.font.name = "Times New Roman"
+        run.font.size = Pt(14)
+        try:
+            run._element.rPr.rFonts.set(qn("w:eastAsia"), "Times New Roman")
+        except (AttributeError, TypeError):
+            pass
+
+    text = build_employee_exit_instruction(fio, login, password, domain, blocks=blocks)
     doc = Document()
-    for line in text.splitlines():
-        doc.add_paragraph(line)
+    for block in (b.strip() for b in text.split("\n\n")):
+        if not block:
+            continue
+        lines = [_WS_INLINE.sub(" ", ln.strip()) for ln in block.split("\n") if ln.strip()]
+        if not lines:
+            continue
+        p = doc.add_paragraph()
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(4)
+        p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+        first = True
+        for ln in lines:
+            if not first:
+                br = p.add_run()
+                br.add_break(WD_BREAK.LINE)
+                _apply_instruction_run_font(br)
+            r = p.add_run(ln)
+            _apply_instruction_run_font(r)
+            first = False
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()
@@ -177,7 +214,31 @@ def report_to_out(db, report: DailyReport) -> DailyReportOut:
         ),
         status=report.status,
         finalized_at=report.finalized_at,
+        updated_at=report.updated_at,
         entries=[
             ReportEntryOut(task=e.task or "", minutes=e.minutes, description=e.description) for e in report.entries
         ],
     )
+
+
+def build_qrcode_png_bytes(url: str) -> bytes:
+    try:
+        import qrcode  # type: ignore[import-untyped]
+        import qrcode.constants  # type: ignore[import-untyped]
+    except ImportError as e:  # pragma: no cover
+        raise HTTPException(
+            status_code=503,
+            detail="Генерация QR недоступна: установите пакет qrcode[pil] и пересоберите backend.",
+        ) from e
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=6,
+        border=2,
+    )
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()

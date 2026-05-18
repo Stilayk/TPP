@@ -19,13 +19,14 @@ from app.bitrix_mention import bitrix_im_display_name  # noqa: E402
 from app.bitrix_notify import normalize_bitrix_chat_dialog_id  # noqa: E402
 from app.database import db_session  # noqa: E402
 from app.duty_slots import SLOT_COUNT, slot_start_time_str  # noqa: E402
+from app.duty_tz import today_moscow  # noqa: E402
 from app.models import DutyAssignment, User  # noqa: E402
 
 
 def _parse_date_arg() -> date:
     if len(sys.argv) > 1:
         return date.fromisoformat(sys.argv[1])
-    return date.today()
+    return today_moscow()
 
 
 def main() -> int:

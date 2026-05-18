@@ -43,12 +43,12 @@ def start_notification_scheduler() -> None:
     global _scheduler
     if _scheduler is not None:
         return
-    tz_name = (settings.TZ or "UTC").strip() or "UTC"
+    tz_name = (settings.TZ or "Europe/Moscow").strip() or "Europe/Moscow"
     try:
         tz = ZoneInfo(tz_name)
     except Exception:
-        logger.warning("Invalid TZ %r, falling back to UTC", tz_name)
-        tz = ZoneInfo("UTC")
+        logger.warning("Invalid TZ %r, falling back to Europe/Moscow", tz_name)
+        tz = ZoneInfo("Europe/Moscow")
     _scheduler = BackgroundScheduler(timezone=tz, daemon=True)
     _scheduler.add_job(
         _tick_5m,

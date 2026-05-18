@@ -82,6 +82,7 @@ app.add_middleware(
     session_cookie="session",
     same_site="lax",
     https_only=settings.SESSION_COOKIE_HTTPS_ONLY,
+    max_age=settings.SESSION_MAX_AGE_SECONDS,
 )
 
 register_routers(app)

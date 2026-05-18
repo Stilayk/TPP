@@ -1,10 +1,10 @@
 # Диагностика уведомлений о дежурствах (чеклист)
 
-Используйте вместе с [notifications-inventory.md](notifications-inventory.md) и [n8n_notification_workflow.md](../n8n_notification_workflow.md).
+Используйте вместе с [notifications-inventory.md](notifications-inventory.md), [notifications-runbook.md](notifications-runbook.md), [notifications-dedup.md](notifications-dedup.md) и [n8n_notification_workflow.md](../n8n_notification_workflow.md).
 
 ## 1. Часовой пояс
 
-- В **Docker** для сервиса `backend` задайте `TZ` (в `docker-compose.yml` уже есть `TZ: "${TZ:-UTC}"`).
+- В **Docker** для сервиса `backend` задайте `TZ` (в `docker-compose.yml` по умолчанию `TZ: "${TZ:-Europe/Moscow}"`).
 - В `.env` рекомендуется `TZ=Europe/Moscow` (или зона заказчика), чтобы встроенный планировщик и внешний cron совпадали с локальными `:55` / `:00`.
 
 ## 2. Строгое время триггера

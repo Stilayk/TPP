@@ -13,17 +13,15 @@
 
 ## Время срабатывания «за 5 минут» и «старт»
 
-Backend сопоставляет слот с **`datetime.now()`** (или с query **`at=`** в ISO). Условие для «за 5 минут»: к моменту вызова **+ 5 минут** минуты должны быть **00** (то есть вызов в минуту **:55** перед слотом). Слоты считаются по **часовому поясу процесса**: в Docker без **`TZ`** часто **UTC** — тогда cron по «местной» :55 не совпадёт с логикой. Задайте в `.env` например **`TZ=Europe/Moscow`** и пересоберите образ (в образе backend установлен пакет **`tzdata`**).
+Расчёт слота — в **московском** времени (`backend/app/duty_tz.py`), независимо от часового пояса браузера пользователя. Без параметра **`at`** используется «сейчас» по **Europe/Moscow**. С query **`at=`** в ISO: значение **без зоны** трактуется как локальное время МСК; с суффиксом `Z` или offset — переводится в МСК, затем считается слот. Условие для «за 5 минут»: к моменту якоря **+ 5 минут** минуты должны быть **00** (вызов в минуту **:55** перед слотом). Встроенный APScheduler срабатывает в **:55** и **:00** по **`TZ`** процесса (по умолчанию **`Europe/Moscow`** в `config` и в `docker-compose`); выровняйте **`TZ`** с внешним cron при необходимости. В образе backend установлен пакет **`tzdata`**.
 
 ## Управление из админки (№32)
 
 - Настройки доступны по API: `GET/PATCH /api/admin/notifications/settings`.
 - Хранятся в БД (таблица `duty_notification_settings`) и применяются в `POST /api/admin/notifications/duty-upcoming/dispatch`.
-- Выбранный способ запуска (`cron` или `n8n`) является **единственным активным**: вызов dispatch с `source`, не равным активному способу, не отправляет уведомления (`sent=false`).
-- Для каждого способа отдельно включаются/отключаются флажки:
-  - `enabled_upcoming_5m` — отправка за 5 минут;
-  - `enabled_start` — отправка в момент начала;
-  - `enabled_chat_on_start` — дублирование в общий чат при старте.
+- Колонка **`selected_method`** (`cron` / `n8n`) есть в БД, но **не** участвует в текущей логике dispatch (не читается backend при отправке). Разделение «кто инициирует» (встроенный APScheduler, внешний cron, n8n) задаётся эксплуатацией: см. [notifications-runbook.md](notifications-runbook.md).
+- Флаги в API (и в PATCH): `scheduler_enabled`, `enabled_upcoming_5m`, `enabled_start`, `enabled_chat_on_start`. **`scheduler_enabled`** отключает только **встроенный** планировщик (`:55` / `:00` в процессе); HTTP-вызовы админом или внешним cron **не** блокируются этим флагом.
+- В БД дублируются колонки `cron_enabled_*` и `n8n_enabled_*`; при сохранении из API значения синхронизируются. Dispatch читает **`cron_enabled_*`** как источник флагов режимов.
 
 ### Битрикс: HTTP 400 при «Отправить график»
 
@@ -43,7 +41,12 @@ Backend сопоставляет слот с **`datetime.now()`** (или с que
 2. Пока `N8N_WEBHOOK_URL` пустой, внешняя цепочка через n8n **молчит** — это штатный режим «отключено».
 3. При изменении каналов Битрикс обновить этот файл: что удалено/оставлено в коде и env.
 
+Подробный регламент: кто может инициировать dispatch, профили A/B/C, чеклист стенда — [notifications-dedup.md](notifications-dedup.md).
+
 ## Связанные файлы
 
 - `backend/app/routers/duties.py` — `duty-upcoming/dispatch`, `duty-schedule/bitrix`, вызов Bitrix webhook.
+- `backend/app/duty_tz.py` — эталон Europe/Moscow для расчёта слота уведомлений.
+- [notifications-runbook.md](notifications-runbook.md) — обязательные env, таблица `duty_notification_settings`, чеклист.
+- [notifications-dedup.md](notifications-dedup.md) — исключение дублей (scheduler / cron / n8n / Битрикс).
 - `ProjectTP/.env.example` — переменные `N8N_*`, `BITRIX_*` без секретов.

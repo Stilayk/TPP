@@ -65,6 +65,10 @@ nano .env   # или vi
 - `HTTP_PORT` — если порт `80` занят (например `8080`; тогда URL будет `http://<хост>:8080`).
 - `POSTGRES_PORT` — если на хосте занят `5432` (для доступа к БД с хоста; контейнеры ходят на сервис `db:5432` без изменений).
 
+### 4.1. Уведомления о дежурствах (Битрикс / n8n / планировщик)
+
+Кратко: задайте **`TZ`** (рекомендуется `Europe/Moscow`), переменные **`BITRIX_*`** и при необходимости **`N8N_*`** по списку в [notifications-runbook.md](notifications-runbook.md). Там же — роль таблицы **`duty_notification_settings`** (`scheduler_enabled`, флаги режимов, шаблоны) и типичные сочетания «встроенный APScheduler vs внешний cron». После выката — [staging-acceptance-checklist.md](staging-acceptance-checklist.md).
+
 ## 5. Запуск и обновление
 
 Из каталога с `docker-compose.yml`:

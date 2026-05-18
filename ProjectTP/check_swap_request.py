@@ -41,6 +41,8 @@ assignments = [
     {"slot": 6, "user_id": u1["id"]},
     {"slot": 7, "user_id": u2["id"]},
     {"slot": 8, "user_id": u1["id"]},
+    {"slot": 9, "user_id": u2["id"]},
+    {"slot": 10, "user_id": u1["id"]},
 ]
 req("/api/duties/batch", "POST", {"date": test_date, "assignments": assignments})
 req("/api/logout", "POST")

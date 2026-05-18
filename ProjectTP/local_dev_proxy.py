@@ -15,7 +15,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     def send_error(self, code, message=None, explain=None):
         path_only = (self.path or "").split("?", 1)[0]
-        if path_only.startswith("/api/") or path_only.startswith("/exports/"):
+        if path_only.startswith("/api/") or path_only.startswith("/exports/") or path_only.startswith("/p/"):
             detail = f"HTTP {code}"
             if message:
                 detail = f"{detail}: {message}"
@@ -34,7 +34,7 @@ class Handler(SimpleHTTPRequestHandler):
         super().send_error(code, message, explain)
 
     def do_GET(self):
-        if self.path.startswith("/api/") or self.path.startswith("/exports/"):
+        if self.path.startswith("/api/") or self.path.startswith("/exports/") or self.path.startswith("/p/"):
             self._proxy()
             return
         super().do_GET()

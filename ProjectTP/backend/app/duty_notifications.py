@@ -19,11 +19,14 @@ from app.bitrix_notify import (
 from app.bitrix_mention import bitrix_im_display_name
 from app.config import settings
 from app.duty_slots import duty_slot_for_dt, slot_start_time_str
+from app.duty_tz import anchor_dispatch_at, today_moscow
 from app.models import DutyAssignment, DutyNotificationSettings, User
 from app.schemas import (
     DutyNotificationDispatchOut,
     DutyNotificationSettingsOut,
     DutyNotificationSettingsUpdateRequest,
+    DutyNotificationTemplatesOut,
+    DutyNotificationTemplatesUpdateRequest,
     DutyTestNotificationOut,
 )
 
@@ -33,7 +36,7 @@ def _resolve_notification_slot(
     at: datetime | None,
     offset_minutes: int,
 ) -> tuple[date, int, str] | tuple[None, None, str]:
-    target_dt = (at or datetime.now()) + timedelta(minutes=offset_minutes)
+    target_dt = anchor_dispatch_at(at) + timedelta(minutes=offset_minutes)
     if target_dt.minute != 0:
         return None, None, target_dt.isoformat()
     duty_date, duty_slot = duty_slot_for_dt(target_dt)
@@ -76,6 +79,36 @@ def apply_notification_settings(
     db.add(row)
 
 
+def notification_templates_to_out(row: DutyNotificationSettings) -> DutyNotificationTemplatesOut:
+    return DutyNotificationTemplatesOut(
+        upcoming_5m_template=row.upcoming_5m_template,
+        start_personal_template=row.start_personal_template,
+        start_chat_template=row.start_chat_template,
+        test_with_slot_template=row.test_with_slot_template,
+        test_without_slot_template=row.test_without_slot_template,
+    )
+
+
+def apply_notification_templates(
+    db, row: DutyNotificationSettings, payload: DutyNotificationTemplatesUpdateRequest
+) -> None:
+    row.upcoming_5m_template = payload.upcoming_5m_template.strip()
+    row.start_personal_template = payload.start_personal_template.strip()
+    row.start_chat_template = payload.start_chat_template.strip()
+    row.test_with_slot_template = payload.test_with_slot_template.strip()
+    row.test_without_slot_template = payload.test_without_slot_template.strip()
+    db.add(row)
+
+
+def _render_notification_template(template: str, values: dict[str, str]) -> str:
+    try:
+        rendered = str(template).format(**values)
+    except KeyError as e:
+        key = str(e).strip("'")
+        raise HTTPException(status_code=400, detail=f"Unknown template placeholder: {key}") from e
+    return rendered.strip()
+
+
 def dispatch_duty_notification(
     db,
     *,
@@ -97,7 +130,7 @@ def dispatch_duty_notification(
             sent=False,
             reason=f"Unknown mode: {mode}",
             event=None,
-            date=(at or datetime.now()).date(),
+            date=anchor_dispatch_at(at).date(),
             slot=0,
             start_time="",
         )
@@ -111,7 +144,7 @@ def dispatch_duty_notification(
             sent=False,
             reason=f"No duty slot at trigger moment ({target_iso})",
             event=mode,
-            date=(at or datetime.now()).date(),
+            date=anchor_dispatch_at(at).date(),
             slot=0,
             start_time="",
         )
@@ -207,16 +240,36 @@ def dispatch_duty_notification(
         need_personal = False
         need_chat = True
     elif mode == "upcoming_5m":
-        personal_message = (
-            f"Через 5 минут начинается ваше дежурство: {start_time}, дата {assignment.date.isoformat()}."
+        personal_message = _render_notification_template(
+            settings_row.upcoming_5m_template,
+            {
+                "employee": user.full_name,
+                "start_time": start_time,
+                "date": assignment.date.isoformat(),
+                "slot": str(assignment.slot),
+            },
         )
         chat_message = ""
         need_personal = True
         need_chat = False
     else:  # start
-        personal_message = f"Ваше дежурство началось: {start_time}, дата {assignment.date.isoformat()}."
-        chat_message = (
-            f"На следующий час дежурным заступает {bitrix_im_display_name(user)}, слот {start_time}, дата {assignment.date.isoformat()}."
+        personal_message = _render_notification_template(
+            settings_row.start_personal_template,
+            {
+                "employee": user.full_name,
+                "start_time": start_time,
+                "date": assignment.date.isoformat(),
+                "slot": str(assignment.slot),
+            },
+        )
+        chat_message = _render_notification_template(
+            settings_row.start_chat_template,
+            {
+                "employee": bitrix_im_display_name(user),
+                "start_time": start_time,
+                "date": assignment.date.isoformat(),
+                "slot": str(assignment.slot),
+            },
         )
         need_personal = True
         need_chat = enabled_chat_on_start
@@ -388,7 +441,8 @@ def send_test_duty_notification(db, *, user_id: int) -> DutyTestNotificationOut:
             message="",
             bitrix_personal_sent=False,
         )
-    today = date.today()
+    today = today_moscow()
+    settings_row = _get_or_create_notification_settings(db)
     assignment = db.execute(
         select(DutyAssignment)
         .where(DutyAssignment.support_user_id == user_id, DutyAssignment.date == today)
@@ -396,14 +450,24 @@ def send_test_duty_notification(db, *, user_id: int) -> DutyTestNotificationOut:
     ).scalars().first()
     if assignment:
         st = slot_start_time_str(assignment.slot)
-        message = (
-            f"Уведомление: сегодня ваше дежурство в {st}. "
-            "Хорошего вам дня. Обнял, приподнял, покружил, поставил."
+        message = _render_notification_template(
+            settings_row.test_with_slot_template,
+            {
+                "employee": user.full_name,
+                "start_time": st,
+                "date": today.isoformat(),
+                "slot": str(assignment.slot),
+            },
         )
     else:
-        message = (
-            "Уведомление: на сегодня у вас нет слота в графике дежурств. "
-            "Хорошего вам дня. Обнял, приподнял, покружил, поставил."
+        message = _render_notification_template(
+            settings_row.test_without_slot_template,
+            {
+                "employee": user.full_name,
+                "start_time": "—",
+                "date": today.isoformat(),
+                "slot": "—",
+            },
         )
 
     bx = bitrix_webhook_base_url()

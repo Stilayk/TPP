@@ -6,127 +6,316 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- При деплое в подпапку добавьте: <meta name="api-base" content="/имя_подпапки" /> -->
   <title>Техподдержка</title>
-  <link rel="stylesheet" href="./styles.css?v=20260416-1" />
+  <link rel="stylesheet" href="./styles.css?v=20260518-resources-favorites-empty" />
 </head>
 
 <body>
-  <header class="topbar">
-    <div class="topbar-left">
-      <div class="brand">Техподдержка</div>
-      <button id="employeeExitOpenBtn" type="button" class="btn">Выход сотрудника</button>
-    </div>
-    <div class="topbar-right">
-      <div class="me-block">
-        <div id="meText" class="me-text"></div>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Основная навигация">
+      <div class="sidebar-brand" title="Техподдержка">
+        <span class="sidebar-brand-mark" aria-hidden="true">⬡</span>
+        <span class="sidebar-label">Техподдержка</span>
       </div>
-      <button id="logoutBtn" class="btn danger" type="button">Выйти</button>
-    </div>
-  </header>
+      <nav class="sidebar-nav" role="tablist" aria-label="Разделы">
+        <button class="tab-btn sidebar-link active" data-tab="graph" role="tab" aria-selected="true" type="button"
+          title="Главная страница">
+          <span class="sidebar-icon" aria-hidden="true">▦</span><span class="sidebar-label">Главная страница</span>
+        </button>
+        <button class="tab-btn sidebar-link" data-tab="resources" role="tab" aria-selected="false" type="button"
+          title="Полезные ресурсы">
+          <span class="sidebar-icon" aria-hidden="true">◈</span><span class="sidebar-label">Полезные ресурсы</span>
+        </button>
+        <button class="tab-btn sidebar-link" data-tab="reports" role="tab" aria-selected="false" type="button"
+          title="Отчеты">
+          <span class="sidebar-icon" aria-hidden="true">▤</span><span class="sidebar-label">Отчеты</span>
+        </button>
+        <button class="tab-btn sidebar-link" data-tab="settings" role="tab" aria-selected="false" type="button"
+          title="Настройки">
+          <span class="sidebar-icon" aria-hidden="true">⚙</span><span class="sidebar-label">Настройки</span>
+        </button>
+        <button id="adminTabBtn" class="tab-btn sidebar-link" data-tab="admin" role="tab" aria-selected="false"
+          type="button" title="Админ" hidden>
+          <span class="sidebar-icon" aria-hidden="true">◇</span><span class="sidebar-label">Админ</span>
+        </button>
+      </nav>
+    </aside>
 
-  <main class="container">
-    <div id="indexError" class="msg error" role="alert" hidden></div>
-
-    <div class="tabs" role="tablist" aria-label="Разделы">
-      <button class="tab-btn active" data-tab="graph" role="tab" aria-selected="true" type="button">График</button>
-      <button class="tab-btn" data-tab="reports" role="tab" aria-selected="false" type="button">Отчеты</button>
-      <button class="tab-btn" data-tab="settings" role="tab" aria-selected="false" type="button">Настройки</button>
-      <button id="adminTabBtn" class="tab-btn" data-tab="admin" role="tab" aria-selected="false" type="button"
-        hidden>Админ</button>
-    </div>
-
-    <section class="tab-panel active" id="tab-graph" role="tabpanel" aria-label="График дежурств">
-      <div class="section">
-        <h2>График дежурств</h2>
-
-        <div class="toolbar">
-          <div class="field inline">
-            <label for="dutiesDate">Дата</label>
-            <input id="dutiesDate" type="date" />
+    <div class="app-main">
+      <header class="topbar">
+        <div class="topbar-right">
+          <div class="me-block">
+            <div id="meText" class="me-text"></div>
           </div>
-          <button id="loadDutiesBtn" class="btn admin-only" type="button" hidden>Обновить</button>
+          <button id="logoutBtn" class="btn danger" type="button">Выйти</button>
         </div>
-        <p class="muted support-only" hidden>График подгружается при выборе даты.</p>
+      </header>
 
-        <div id="dutiesMsg" class="msg info" hidden></div>
+      <main class="container">
+        <div id="indexError" class="msg error" role="alert" hidden></div>
 
-        <div id="currentDutyNow" class="now-duty" aria-live="polite">
-          <strong>Сейчас дежурит:</strong>
-          <span id="currentDutyName">—</span>
-          <span class="muted"> · слот: <span id="currentDutyTime">—</span></span>
-        </div>
+        <section class="tab-panel active" id="tab-graph" role="tabpanel" aria-label="График дежурств">
+          <div class="graph-page">
+            <div class="graph-main-col">
+              <h1 class="page-title">График дежурств</h1>
 
-        <div class="table-wrap">
-          <table class="table" id="dutiesTable">
-            <thead>
-              <tr>
-                <th>Дежурство</th>
-                <th class="col-employee">Сотрудник</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
+              <div class="graph-hero card">
+                <div class="today-duty-card" id="currentDutyNow" aria-live="polite">
+                  <div>
+                    <div class="kicker">Сейчас дежурит</div>
+                    <div class="today-duty-body">
+                      <div class="avatar-circle" aria-hidden="true">ТП</div>
+                      <div>
+                        <strong id="currentDutyName">—</strong>
+                        <div class="muted">слот: <span id="currentDutyTime">—</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-        <div class="actions admin-only" hidden>
-          <button id="saveDutiesBtn" class="btn primary" type="button">Сохранить правки графика</button>
-        </div>
+                <div class="clock-card" aria-live="polite">
+                  <div id="dashboardClockTime" class="clock-time">--:--</div>
+                  <div id="dashboardClockDate" class="muted">—</div>
+                </div>
 
-        <div class="card support-only" id="swapCard" hidden>
-          <h3>Запрос на обмен дежурствами</h3>
-          <div class="toolbar">
-            <div class="field inline">
-              <label for="swapDate">Дата</label>
-              <input id="swapDate" type="date" />
+                <div class="quick-actions quick-actions-stack">
+                  <button id="dutyLeaveOpenBtn" type="button" class="btn"
+                    title="Укажите дни, когда вас не назначать при автоматической генерации графика дежурств">Отсутствие в графике дежурств</button>
+                  <button id="quickReplacementFocusBtn" class="btn" type="button">Запросить замену</button>
+                  <button id="employeeExitOpenBtnHero" type="button" class="btn">Памятка сотруднику</button>
+                </div>
+              </div>
+
+              <div class="card graph-filters-card">
+                <div class="toolbar graph-toolbar">
+                  <div class="field inline">
+                    <label for="dutiesDate">Дата</label>
+                    <input id="dutiesDate" type="date" />
+                  </div>
+                  <div class="field inline">
+                    <label for="dutiesViewMode">Вид</label>
+                    <select id="dutiesViewMode">
+                      <option value="table">День</option>
+                      <option value="week">Неделя</option>
+                      <option value="month">Месяц</option>
+                    </select>
+                  </div>
+                  <div class="field inline">
+                    <label for="dutiesDisplayFilter">Показать</label>
+                    <select id="dutiesDisplayFilter" title="Только отображение; данные на сервере не меняются">
+                      <option value="all">Все слоты</option>
+                      <option value="mine">Только мои</option>
+                    </select>
+                  </div>
+                  <button id="loadDutiesBtn" class="btn secondary admin-only" type="button" hidden>Обновить</button>
+                  <button id="notifyDutiesBitrixGraphBtn" class="btn duties-manage-only" type="button" hidden>
+                    Отправить график на сегодня в Битрикс
+                  </button>
+                </div>
+                <p class="muted panel-hint support-only" hidden>График подгружается при выборе даты.</p>
+                <div id="dutiesMsg" class="msg info" hidden></div>
+              </div>
+
+              <div class="card schedule-card">
+                <h3 id="scheduleTitle">Расписание дежурств</h3>
+                <div class="table-wrap duties-table-wrap">
+                  <table class="table" id="dutiesTable">
+                    <thead>
+                      <tr>
+                        <th>Дежурство</th>
+                        <th class="col-employee">Сотрудник</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+
+                <div id="dutiesCalendarWrap" class="duties-calendar-wrap" hidden>
+                  <div id="dutiesCalendarTitle" class="duties-calendar-title"></div>
+                  <div id="dutiesCalendarGrid" class="duties-calendar-grid"></div>
+                </div>
+
+                <p class="muted admin-only schedule-hint" hidden>Можно оставить «—» в ячейке и сохранить: пустой слот допустим, его можно
+                  заполнить позже.</p>
+                <div class="actions admin-only schedule-actions" hidden>
+                  <button id="saveDutiesBtn" class="btn primary" type="button">Сохранить правки графика</button>
+                </div>
+              </div>
             </div>
-            <div class="field inline">
-              <label for="swapFromSlot">Мой слот</label>
-              <select id="swapFromSlot"></select>
-            </div>
-            <div class="field inline">
-              <label for="swapToSlot">Слот коллеги</label>
-              <select id="swapToSlot"></select>
-            </div>
-            <button id="sendSwapBtn" class="btn" type="button">Отправить запрос</button>
+
+            <aside class="graph-side-col">
+              <div class="card graph-side-card" id="swapCard" hidden>
+                <div class="side-card-head">
+                  <h3>Запросы на обмен дежурствами</h3>
+                  <span id="swapInboxBadge" class="count-badge">0</span>
+                </div>
+                <div class="toolbar compact-swap-form">
+                  <div class="field inline">
+                    <label for="swapDate">Дата</label>
+                    <input id="swapDate" type="date" />
+                  </div>
+                  <div class="field inline">
+                    <label for="swapFromSlot">Мой слот</label>
+                    <select id="swapFromSlot"></select>
+                  </div>
+                  <div class="field inline">
+                    <label for="swapToSlot">Слот другого дежурного</label>
+                    <select id="swapToSlot"></select>
+                  </div>
+                  <button id="sendSwapBtn" class="btn" type="button">Отправить запрос</button>
+                </div>
+                <div id="swapMsg" class="msg info" hidden></div>
+                <div id="swapInboxList" class="reports-list swap-inbox-list"></div>
+              </div>
+
+              <div class="card graph-side-card">
+                <h3>Недавняя активность</h3>
+                <div id="recentActivityList" class="activity-list">
+                  <div class="activity-item">
+                    <span class="activity-dot"></span>
+                    <div>
+                      <strong>График готов к просмотру</strong>
+                      <div class="muted">Данные обновляются при смене даты или вручную.</div>
+                    </div>
+                  </div>
+                  <div class="activity-item">
+                    <span class="activity-dot"></span>
+                    <div>
+                      <strong>Обмены дежурствами</strong>
+                      <div class="muted">Актуальные запросы отображаются выше.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </aside>
           </div>
-          <div id="swapMsg" class="msg info" hidden></div>
-          <div class="muted">Входящие запросы</div>
-          <div id="swapInboxList" class="reports-list"></div>
+        </section>
+
+    <section class="tab-panel" id="tab-reports" role="tabpanel" aria-label="Отчеты">
+      <div class="reports-page graph-page">
+        <div class="reports-main graph-main-col">
+          <h1 class="page-title">Отчеты</h1>
+
+          <div class="card graph-filters-card reports-filters-card">
+            <div class="toolbar reports-toolbar">
+              <div class="field inline">
+                <label for="reportsDate">Дата</label>
+                <input id="reportsDate" type="date" />
+              </div>
+
+              <div id="reportsEmployeeRow" class="field inline admin-only" hidden>
+                <label for="reportsEmployeeSelect">Сотрудник</label>
+                <select id="reportsEmployeeSelect"></select>
+              </div>
+
+              <button id="loadReportsBtn" class="btn secondary" type="button">Обновить</button>
+              <button id="downloadAllExcelsBtn" class="btn primary admin-only" type="button" hidden>Экспорт в Excel</button>
+            </div>
+            <p class="muted panel-hint support-only" hidden>Отображаются ваши отчёты за выбранную дату; список обновляется при смене
+              даты.</p>
+
+            <div id="reportsMsg" class="msg success" hidden></div>
+          </div>
+
+          <div id="reportsKpiStrip" class="reports-kpi-row" hidden>
+            <div class="card reports-kpi-card">
+              <div class="reports-kpi-label">Записей</div>
+              <div id="reportsKpiEntries" class="reports-kpi-value">0</div>
+            </div>
+            <div class="card reports-kpi-card">
+              <div class="reports-kpi-label">Часов работы</div>
+              <div id="reportsKpiHours" class="reports-kpi-value">0 ч 00 м</div>
+            </div>
+            <div class="card reports-kpi-card">
+              <div class="reports-kpi-label">Статус</div>
+              <div id="reportsKpiStatus" class="reports-kpi-value reports-kpi-status">—</div>
+            </div>
+            <div class="card reports-kpi-card">
+              <div class="reports-kpi-label">Последнее обновление</div>
+              <div id="reportsKpiUpdated" class="reports-kpi-value reports-kpi-value-sm">—</div>
+            </div>
+          </div>
+
+          <div id="reportsList" class="reports-list reports-result-zone"></div>
         </div>
+
+        <aside class="reports-aside graph-side-col" aria-label="История и подсказки">
+          <div class="card reports-aside-block">
+            <h3 class="reports-aside-title">
+              История отчетов
+              <span id="reportsHistoryCount" class="reports-history-badge" hidden>0</span>
+            </h3>
+            <div id="reportsHistoryList" class="reports-history-list"></div>
+            <p class="muted reports-history-footnote">Последние изменения по всем доступным вам отчётам.</p>
+          </div>
+
+          <div class="card reports-aside-block reports-hints-card">
+            <h3 class="reports-aside-title">Как заполнить отчет</h3>
+            <ul class="reports-hint-list">
+              <li><strong>Задача</strong> — кратко, что делали (консультация, диагностика, настройка).</li>
+              <li><strong>Результат</strong> — итог для пользователя или системы (решено, инструкция, эскалация).</li>
+              <li><strong>Время работы</strong> — минуты по строке (0–1440); сумма отображается в «Часов работы».</li>
+            </ul>
+          </div>
+        </aside>
       </div>
     </section>
 
-    <section class="tab-panel" id="tab-reports" role="tabpanel" aria-label="Отчеты">
-      <div class="section">
-        <h2>Отчеты</h2>
-
-        <div class="toolbar">
-          <div class="field inline">
-            <label for="reportsDate">Дата</label>
-            <input id="reportsDate" type="date" />
+    <section class="tab-panel" id="tab-resources" role="tabpanel" aria-label="Полезные ресурсы">
+      <div class="secondary-page resources-page">
+        <div class="resources-main">
+          <div class="secondary-page-head">
+            <h1 class="page-title">Полезные ресурсы</h1>
+            <p class="muted">Выберите ресурс и откройте его в новой вкладке.</p>
           </div>
-
-          <div id="reportsEmployeeRow" class="field inline admin-only" hidden>
-            <label for="reportsEmployeeSelect">Сотрудник</label>
-            <select id="reportsEmployeeSelect"></select>
+          <div class="card secondary-page-card resources-search-card">
+            <div class="toolbar resources-toolbar">
+              <div class="field">
+                <label for="resourcesSearchInput">Поиск ресурса</label>
+                <input id="resourcesSearchInput" type="text" placeholder="Например: YouTrack, Битрикс, Zoom" />
+              </div>
+            </div>
+            <div class="resource-category-filter" aria-label="Фильтр ресурсов по категории">
+              <button class="resource-category-btn active" type="button" data-resource-category="all">Все</button>
+              <button class="resource-category-btn" type="button" data-resource-category="communications">Коммуникации</button>
+              <button class="resource-category-btn" type="button" data-resource-category="admin">Администрирование</button>
+              <button class="resource-category-btn" type="button" data-resource-category="monitoring">Мониторинг</button>
+              <button class="resource-category-btn" type="button" data-resource-category="services">Сервисы</button>
+            </div>
           </div>
-
-          <button id="loadReportsBtn" class="btn admin-only" type="button" hidden>Обновить</button>
-          <button id="downloadAllExcelsBtn" class="btn admin-only" type="button" hidden>Скачать все Excel</button>
+          <div id="resourcesGrid" class="resources-grid"></div>
+          <p class="resources-footnote muted">Нажмите на ресурс, чтобы открыть его в новой вкладке.</p>
         </div>
-        <p class="muted support-only" hidden>Отображаются ваши отчёты за выбранную дату; список обновляется при смене
-          даты.</p>
 
-        <div id="reportsMsg" class="msg info" hidden></div>
-
-        <div id="reportsList" class="reports-list"></div>
+        <aside class="resources-aside" aria-label="Быстрый доступ к ресурсам">
+          <div class="card resources-aside-card">
+            <h3 class="resources-aside-title">Избранные</h3>
+            <div id="resourcesFavoritesList" class="resources-side-list"></div>
+            <button id="resourcesFavoritesShowAllBtn" class="resources-side-link" type="button">Смотреть все избранные →</button>
+          </div>
+          <div class="card resources-aside-card">
+            <h3 class="resources-aside-title">Недавно открывали</h3>
+            <div id="resourcesRecentList" class="resources-side-list"></div>
+            <button id="resourcesRecentShowAllBtn" class="resources-side-link" type="button">Смотреть всю историю →</button>
+          </div>
+        </aside>
       </div>
     </section>
 
     <section class="tab-panel" id="tab-admin" role="tabpanel" aria-label="Админ">
       <div class="section">
         <h2>Админ</h2>
+        <div class="tabs admin-subtabs" role="tablist" aria-label="Подразделы админки">
+          <button class="tab-btn admin-subtab-btn active" data-admin-tab="analytics" role="tab" aria-selected="true"
+            type="button">Аналитика</button>
+          <button class="tab-btn admin-subtab-btn" data-admin-tab="generation" role="tab" aria-selected="false"
+            type="button">Генерация графика</button>
+          <button class="tab-btn admin-subtab-btn" data-admin-tab="notifications" role="tab" aria-selected="false"
+            type="button">Уведомление</button>
+          <button class="tab-btn admin-subtab-btn" data-admin-tab="users" role="tab" aria-selected="false"
+            type="button">Сотрудники</button>
+        </div>
 
-        <div class="card">
+        <div class="card" id="adminGenerateCard">
           <h3>Генерация графика</h3>
           <div class="toolbar">
             <div class="field inline">
@@ -144,12 +333,47 @@
               </label>
             </div>
             <button id="genDutiesBtn" class="btn primary" type="button">Сгенерировать дежурства</button>
+            <button id="exportDutiesExcelBtn" class="btn" type="button">Скачать Excel за период</button>
           </div>
+          <p class="muted" style="margin-top: 0.35rem;">Excel: даты <strong>Начало</strong> и <strong>Конец</strong> из
+            строки выше (не более 120 дней). PDF не формируется.</p>
+          <div class="toolbar wrap" style="margin-top: 1rem;">
+            <div class="muted" style="width: 100%;"><strong>Копирование шаблона</strong> — перенос назначений по
+              дням (1-й день источника → 1-й день цели и т.д.; длины диапазонов должны совпадать).</div>
+            <div class="field inline">
+              <label for="copySourceStart">Источник: с</label>
+              <input id="copySourceStart" type="date" />
+            </div>
+            <div class="field inline">
+              <label for="copySourceEnd">по</label>
+              <input id="copySourceEnd" type="date" />
+            </div>
+            <div class="field inline">
+              <label for="copyTargetStart">Цель: с</label>
+              <input id="copyTargetStart" type="date" />
+            </div>
+            <div class="field inline">
+              <label for="copyTargetEnd">по</label>
+              <input id="copyTargetEnd" type="date" />
+            </div>
+            <div class="field inline checkbox">
+              <label class="checkbox-label">
+                <input id="copyOverwrite" type="checkbox" />
+                Перезаписать занятые слоты в цели
+              </label>
+            </div>
+            <button id="copyDutiesRangeBtn" class="btn" type="button">Скопировать период</button>
+          </div>
+          <p class="muted">Автогенерация не заполняет <strong>субботу, воскресенье</strong> и <strong>официальные
+            нерабочие праздники РФ</strong> (производственный календарь, пакет <code>holidays</code>); предпраздничные
+            сокращённые дни остаются рабочими для слотов 07:00–17:00. При необходимости задайте дежурства вручную.</p>
           <div id="genDutiesMsg" class="msg info" hidden></div>
+          <div id="exportDutiesMsg" class="msg info" hidden></div>
+          <div id="copyDutiesMsg" class="msg info" hidden></div>
           <div id="genDutiesResult" class="muted"></div>
         </div>
 
-        <div class="card">
+        <div class="card" id="adminNotificationsCard">
           <h3>Уведомления</h3>
           <div class="toolbar">
             <label class="checkbox-label">
@@ -175,6 +399,36 @@
               </label>
             </div>
           </div>
+          <div class="notification-settings-block">
+            <div class="muted">
+              <strong>Шаблоны сообщений</strong>
+              (доступные переменные: <code>{employee}</code>, <code>{start_time}</code>, <code>{date}</code>,
+              <code>{slot}</code>)
+            </div>
+            <div class="field notification-template-field">
+              <label for="notifTpl5m">За 5 минут (личное)</label>
+              <textarea id="notifTpl5m" rows="2"></textarea>
+            </div>
+            <div class="field notification-template-field">
+              <label for="notifTplStartPersonal">В момент старта (личное)</label>
+              <textarea id="notifTplStartPersonal" rows="2"></textarea>
+            </div>
+            <div class="field notification-template-field">
+              <label for="notifTplStartChat">В момент старта (общий чат)</label>
+              <textarea id="notifTplStartChat" rows="2"></textarea>
+            </div>
+            <div class="field notification-template-field">
+              <label for="notifTplTestWithSlot">Тест: есть дежурство сегодня</label>
+              <textarea id="notifTplTestWithSlot" rows="2"></textarea>
+            </div>
+            <div class="field notification-template-field">
+              <label for="notifTplTestNoSlot">Тест: нет дежурства сегодня</label>
+              <textarea id="notifTplTestNoSlot" rows="2"></textarea>
+            </div>
+            <div class="actions">
+              <button id="saveNotifTemplatesBtn" class="btn" type="button">Сохранить шаблоны</button>
+            </div>
+          </div>
           <div class="actions toolbar wrap">
             <div class="field">
               <label for="notifTestUserId">Проверка ЛС в Битрикс</label>
@@ -190,97 +444,242 @@
           <div id="notifyDutiesBitrixMsg" class="msg info" hidden></div>
         </div>
 
-        <div class="card">
-          <h3>Сотрудники</h3>
-          <div class="toolbar">
-            <div class="field">
-              <label for="newUserUsername">Логин</label>
-              <input id="newUserUsername" type="text" />
-            </div>
-            <div class="field">
-              <label for="newUserFullName">ФИО</label>
-              <input id="newUserFullName" type="text" />
-            </div>
-            <div class="field">
-              <label for="newUserPassword">Пароль</label>
-              <input id="newUserPassword" type="password" />
-            </div>
-            <div class="field">
-              <label for="newUserBitrixId">ID в Битрикс24 (необязательно)</label>
-              <input id="newUserBitrixId" type="text" inputmode="numeric" placeholder="например 6188" />
-            </div>
-          </div>
-          <div class="actions">
-            <button id="createUserBtn" class="btn" type="button">Добавить сотрудника</button>
-            <button id="refreshUsersEditorBtn" class="btn" type="button">Обновить список</button>
-          </div>
-          <div id="createUserMsg" class="msg info" hidden></div>
-
-          <p class="muted">
-            <strong>Права администратора</strong> — включите флажок у пользователя, чтобы у него появилась вкладка
-            «Админ». Снимите флажок, чтобы вернуть роль сотрудника. Изначального администратора (первая учётная запись
-            из настроек сервера) нельзя лишить прав; должен остаться хотя бы один администратор.
-          </p>
-          <p class="muted">
-            Колонка <strong>Битрикс</strong> — числовой ID пользователя в портале (и у сотрудников, и у
-            администраторов). У <strong>support</strong> сохраняется вместе с логином/ФИО кнопкой «Сохранить»; у
-            <strong>admin</strong> — кнопкой «Сохранить ID». В уведомлении «график в чат» имя станет ссылкой на профиль,
-            если ID указан.
-          </p>
-          <div class="table-wrap">
-            <table class="table" id="adminUsersEditorTable">
-              <thead>
-                <tr>
-                  <th style="width: 80px;">ID</th>
-                  <th>Логин</th>
-                  <th>ФИО</th>
-                  <th style="width: 120px;">Битрикс</th>
-                  <th style="width: 140px;">Права администратора</th>
-                  <th style="width: 160px;"></th>
-                </tr>
-              </thead>
-              <tbody id="adminUsersEditorBody"></tbody>
-            </table>
-          </div>
-          <div class="actions">
-            <button id="refreshRoleAuditBtn" class="btn" type="button">Обновить журнал назначений</button>
-          </div>
-          <pre id="roleAuditPre" class="role-audit-pre muted" hidden></pre>
-          <div id="adminRoleMsg" class="msg info" hidden></div>
-
-          <hr />
-          <h4>Управление сотрудником</h4>
-          <div class="toolbar">
+        <div class="card analytics-admin-card" id="adminAnalyticsCard">
+          <h2 class="analytics-page-title">Аналитика</h2>
+          <div class="analytics-filter-toolbar toolbar">
             <div class="field inline">
-              <label for="adminUserSelect">Сотрудник</label>
-              <select id="adminUserSelect"></select>
+              <label for="analyticsStartDate">Начало</label>
+              <input id="analyticsStartDate" type="date" />
             </div>
-            <div class="field inline checkbox">
-              <label class="checkbox-label">
-                <input id="adminDutyActiveToggle" type="checkbox" />
-                Участвует в генерации дежурств
-              </label>
+            <div class="field inline">
+              <label for="analyticsEndDate">Конец</label>
+              <input id="analyticsEndDate" type="date" />
             </div>
-            <div class="field">
-              <label for="adminNewPassword">Новый пароль</label>
-              <input id="adminNewPassword" type="password" />
-            </div>
+            <button id="loadAnalyticsBtn" class="btn primary" type="button">Показать</button>
           </div>
-          <div class="actions">
-            <button id="adminSaveDutyStatusBtn" class="btn" type="button">Сохранить статус дежурств</button>
-            <button id="adminChangePasswordBtn" class="btn" type="button">Сменить пароль</button>
-            <button id="adminDeleteReportsBtn" class="btn" type="button">Удалить историю отчетов</button>
-            <button id="adminDeleteUserBtn" class="btn danger" type="button">Удалить пользователя</button>
+          <div id="analyticsMsg" class="msg info" hidden></div>
+
+          <div class="analytics-admin-layout">
+            <div class="analytics-admin-main">
+              <div class="analytics-kpi-sections">
+                <section class="analytics-kpi-section" aria-label="Обычные дежурства">
+                  <h3 class="analytics-section-title">Обычные дежурства</h3>
+                  <div class="analytics-kpi-grid analytics-kpi-grid--regular">
+                    <div class="analytics-kpi-card">
+                      <div class="analytics-kpi-icon analytics-kpi-icon--slots" aria-hidden="true">▦</div>
+                      <div class="analytics-kpi-text">
+                        <div class="analytics-kpi-label">Слоты</div>
+                        <div class="analytics-kpi-value" id="analyticsKpiSlots">—</div>
+                        <div class="analytics-kpi-sub muted">Заполнено / Всего</div>
+                      </div>
+                    </div>
+                    <div class="analytics-kpi-card">
+                      <div class="analytics-kpi-icon analytics-kpi-icon--empty" aria-hidden="true">◎</div>
+                      <div class="analytics-kpi-text">
+                        <div class="analytics-kpi-label">Незаполненные</div>
+                        <div class="analytics-kpi-value" id="analyticsKpiUnassigned">—</div>
+                        <div class="analytics-kpi-sub muted">Слотов без назначений</div>
+                      </div>
+                    </div>
+                    <div class="analytics-kpi-card">
+                      <div class="analytics-kpi-icon analytics-kpi-icon--swap" aria-hidden="true">⇄</div>
+                      <div class="analytics-kpi-text">
+                        <div class="analytics-kpi-label">Обмены</div>
+                        <div class="analytics-kpi-value" id="analyticsKpiSwaps">—</div>
+                        <div class="analytics-kpi-sub muted">За выбранный период</div>
+                      </div>
+                    </div>
+                    <div class="analytics-kpi-card">
+                      <div class="analytics-kpi-icon analytics-kpi-icon--overload" aria-hidden="true">▲</div>
+                      <div class="analytics-kpi-text">
+                        <div class="analytics-kpi-label">Перегруз</div>
+                        <div class="analytics-kpi-value" id="analyticsKpiOverload">—</div>
+                        <div class="analytics-kpi-sub muted">Сотрудников с перегрузом</div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+                <section class="analytics-kpi-section" aria-label="Утренние дежурства">
+                  <h3 class="analytics-section-title">Утренние дежурства</h3>
+                  <div class="analytics-kpi-grid analytics-kpi-grid--morning">
+                    <div class="analytics-kpi-card">
+                      <div class="analytics-kpi-icon analytics-kpi-icon--slots" aria-hidden="true">☼</div>
+                      <div class="analytics-kpi-text">
+                        <div class="analytics-kpi-label">Утренние слоты</div>
+                        <div class="analytics-kpi-value" id="analyticsKpiMorningSlots">—</div>
+                        <div class="analytics-kpi-sub muted">Заполнено / Всего</div>
+                      </div>
+                    </div>
+                    <div class="analytics-kpi-card">
+                      <div class="analytics-kpi-icon analytics-kpi-icon--empty" aria-hidden="true">◎</div>
+                      <div class="analytics-kpi-text">
+                        <div class="analytics-kpi-label">Незаполненные утром</div>
+                        <div class="analytics-kpi-value" id="analyticsKpiMorningUnassigned">—</div>
+                        <div class="analytics-kpi-sub muted">Слотов без назначений</div>
+                      </div>
+                    </div>
+                    <div class="analytics-kpi-card">
+                      <div class="analytics-kpi-icon analytics-kpi-icon--overload" aria-hidden="true">▲</div>
+                      <div class="analytics-kpi-text">
+                        <div class="analytics-kpi-label">Утренний перегруз</div>
+                        <div class="analytics-kpi-value" id="analyticsKpiMorningOverload">—</div>
+                        <div class="analytics-kpi-sub muted">Сотрудников с перегрузом</div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              <div id="analyticsMonthlyBlock" class="analytics-monthly-block" hidden></div>
+              <p class="muted analytics-legend">Утренние дежурства считаются отдельно: 07:00 и 08:00. Перегруз:
+                эвристика при ≥12 назначениях и ≥2 сотрудниках — доля от слотов своего типа и сравнение со средним (не
+                замена ТЗ).</p>
+
+              <div class="analytics-load-grid">
+                <section>
+                  <h3 class="analytics-section-title">Нагрузка по обычным дежурствам</h3>
+                  <p class="muted analytics-section-hint">Без утренних слотов 07:00 и 08:00.</p>
+                  <div id="analyticsEmployees" class="analytics-employees-list"></div>
+                </section>
+                <section>
+                  <h3 class="analytics-section-title">Нагрузка по утренним дежурствам</h3>
+                  <p class="muted analytics-section-hint">Только слоты 07:00 и 08:00.</p>
+                  <div id="analyticsMorningEmployees" class="analytics-employees-list"></div>
+                </section>
+              </div>
+            </div>
+
+            <aside class="analytics-admin-aside" aria-label="Аналитическая панель">
+              <div class="analytics-aside-card analytics-risk-card" id="analyticsRiskCard">
+                <h3 class="analytics-aside-title">Риск перегруза</h3>
+                <div id="analyticsRiskBody" class="analytics-risk-body muted">Загрузите данные кнопкой «Показать».</div>
+              </div>
+              <div class="analytics-aside-card analytics-rec-card">
+                <h3 class="analytics-aside-title">Рекомендации</h3>
+                <ul class="analytics-rec-list">
+                  <li><span class="analytics-rec-ico" aria-hidden="true">◎</span> Рассмотрите перераспределение слотов у
+                    сотрудников с риском перегруза.</li>
+                  <li><span class="analytics-rec-ico" aria-hidden="true">⇄</span> Используйте обмены для балансировки
+                    нагрузки между сотрудниками.</li>
+                  <li><span class="analytics-rec-ico" aria-hidden="true">▦</span> Планируйте замены заранее, чтобы
+                    снизить вероятность перегруза.</li>
+                  <li><span class="analytics-rec-ico" aria-hidden="true">◆</span> Настройте уведомления о перегрузе для
+                    быстрых реакций.</li>
+                </ul>
+              </div>
+              <div class="analytics-aside-foot msg info" role="note">
+                Показатели обновляются на основе текущего графика и заявок обмена за выбранный период.
+              </div>
+            </aside>
           </div>
-          <div id="adminOpsMsg" class="msg info" hidden></div>
+        </div>
+
+        <div class="card admin-users-page-card" id="adminUsersCard">
+          <div class="admin-users-layout">
+            <div class="admin-users-main-col">
+              <section class="admin-users-panel" aria-labelledby="adminAddUserTitle">
+                <h3 id="adminAddUserTitle" class="analytics-section-title">Добавить сотрудника</h3>
+                <div class="toolbar admin-users-add-toolbar">
+                  <div class="field">
+                    <label for="newUserUsername">Логин</label>
+                    <input id="newUserUsername" type="text" placeholder="например: iv.ivanov" autocomplete="off" />
+                  </div>
+                  <div class="field">
+                    <label for="newUserFullName">ФИО</label>
+                    <input id="newUserFullName" type="text" placeholder="например: Иванов Иван Иванович" autocomplete="name" />
+                  </div>
+                  <div class="field">
+                    <label for="newUserPassword">Пароль</label>
+                    <input id="newUserPassword" type="password" placeholder="не короче 8 символов" autocomplete="new-password" />
+                  </div>
+                  <div class="field">
+                    <label for="newUserBitrixId">ID в Битрикс24</label>
+                    <input id="newUserBitrixId" type="text" inputmode="numeric" placeholder="например: 6188" />
+                  </div>
+                </div>
+                <div class="actions">
+                  <button id="createUserBtn" class="btn primary" type="button">Добавить сотрудника</button>
+                  <button id="refreshUsersEditorBtn" class="btn" type="button">Обновить список</button>
+                </div>
+                <div id="createUserMsg" class="msg info" hidden></div>
+              </section>
+
+              <div class="admin-users-info-banner" role="note">
+                <span class="admin-users-info-icon" aria-hidden="true">ⓘ</span>
+                <div class="admin-users-info-text">
+                  <p><strong>Права администратора</strong> — включите флажок «Права адм.» в колонке «Роль», чтобы у
+                    пользователя появилась вкладка «Админ». Должен остаться хотя бы один администратор.</p>
+                  <p><strong>Делегированные права</strong> — бейджи «График», «Отчёты», «Уведомления»: доступ к разделам
+                    без полной роли администратора.</p>
+                </div>
+              </div>
+
+              <section class="admin-users-panel admin-users-table-section" aria-labelledby="adminUsersTableTitle">
+                <h3 id="adminUsersTableTitle" class="analytics-section-title">Сотрудники</h3>
+                <div class="table-wrap admin-users-table-wrap">
+                  <table class="table admin-users-editor-table" id="adminUsersEditorTable">
+                    <thead>
+                      <tr>
+                        <th class="admin-users-th-id">ID</th>
+                        <th class="admin-users-th-login">Логин</th>
+                        <th class="admin-users-th-name">ФИО</th>
+                        <th class="admin-users-th-last">Последний вход</th>
+                        <th class="admin-users-th-bitrix">Битрикс24</th>
+                        <th class="admin-users-th-role">Роль</th>
+                        <th class="admin-users-th-perms">Права</th>
+                        <th class="admin-users-th-actions">Действия</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminUsersEditorBody"></tbody>
+                  </table>
+                </div>
+                <div id="adminUsersPagination" class="admin-users-pagination" hidden></div>
+                <div class="actions admin-users-audit-row">
+                  <button id="refreshRoleAuditBtn" class="btn secondary" type="button">Обновить журнал назначений</button>
+                </div>
+                <pre id="roleAuditPre" class="role-audit-pre muted" hidden></pre>
+                <div id="adminRoleMsg" class="msg info" hidden></div>
+              </section>
+            </div>
+
+            <aside class="admin-users-panel admin-users-aside" aria-labelledby="adminManageUserTitle">
+              <h3 id="adminManageUserTitle" class="analytics-section-title">Управление сотрудником</h3>
+              <div class="field">
+                <label for="adminUserSelect">Сотрудник</label>
+                <select id="adminUserSelect"></select>
+              </div>
+              <div class="field checkbox">
+                <label class="checkbox-label">
+                  <input id="adminDutyActiveToggle" type="checkbox" />
+                  Участвует в генерации дежурств
+                </label>
+                <span id="adminDutyLeaveHint" class="muted admin-duty-leave-hint" hidden></span>
+              </div>
+              <div class="field">
+                <label for="adminNewPassword">Новый пароль</label>
+                <input id="adminNewPassword" type="password" placeholder="не короче 8 символов" autocomplete="new-password" />
+              </div>
+              <div class="actions admin-users-aside-actions">
+                <button id="adminSaveDutyStatusBtn" class="btn primary" type="button">Сохранить статус</button>
+                <button id="adminChangePasswordBtn" class="btn" type="button">Сменить пароль</button>
+                <button id="adminDeleteReportsBtn" class="btn" type="button">Удалить историю отчетов</button>
+                <button id="adminDeleteUserBtn" class="btn danger" type="button">Удалить пользователя</button>
+              </div>
+              <div id="adminOpsMsg" class="msg info" hidden></div>
+            </aside>
+          </div>
         </div>
       </div>
     </section>
 
     <section class="tab-panel" id="tab-settings" role="tabpanel" aria-label="Настройки пользователя">
-      <div class="section">
-        <h2>Настройки пользователя</h2>
+      <div class="secondary-page settings-page">
+        <div class="secondary-page-head">
+          <h1 class="page-title">Настройки пользователя</h1>
+          <p class="muted">Профиль, участие в генерации графика и пароль собраны в одном месте.</p>
+        </div>
 
+        <div class="settings-card-grid">
         <div class="card">
           <h3>Профиль</h3>
           <div class="toolbar">
@@ -293,6 +692,23 @@
             <button id="selfSaveProfileBtn" class="btn" type="button">Сохранить профиль</button>
           </div>
           <div id="selfProfileMsg" class="msg info" hidden></div>
+        </div>
+
+        <div class="card" id="dutyLeaveSettingsCard">
+          <h3>Дни без участия в генерации графика</h3>
+          <p class="muted">Отмеченные дни вы не попадаете в автоматическую генерацию дежурств. «Отменить запланированные
+            дни» — убрать все дни с сегодняшней даты (МСК). Если сегодня вы отмечены, но готовы участвовать — нажмите
+            кнопку ниже; остальные запланированные дни сохранятся.</p>
+          <div id="dutyLeaveSettingsSummary" class="muted duty-leave-settings-summary">—</div>
+          <div class="duty-leave-early-row actions" id="dutyLeaveEarlyRow" hidden>
+            <button id="dutyLeaveResumeTodayBtn" type="button" class="btn">Вернуть участие в генерации с сегодня
+              (раньше запланированного)</button>
+          </div>
+          <div class="actions" style="margin-top: 0.75rem;">
+            <button id="dutyLeaveCancelFutureBtn" type="button" class="btn">Отменить запланированные дни</button>
+            <button id="dutyLeaveOpenFromSettingsBtn" type="button" class="btn primary">Календарь</button>
+          </div>
+          <div id="dutyLeaveSettingsMsg" class="msg info" hidden></div>
         </div>
 
         <div class="card">
@@ -316,9 +732,33 @@
           </div>
           <div id="selfChangePasswordMsg" class="msg info" hidden></div>
         </div>
+        </div>
+
       </div>
     </section>
-  </main>
+      </main>
+    </div>
+  </div>
+
+  <div id="dutyLeaveModal" class="modal-overlay" hidden role="dialog" aria-modal="true"
+    aria-labelledby="dutyLeaveModalTitle">
+    <div class="modal-card duty-leave-modal-card">
+      <h3 id="dutyLeaveModalTitle">Дни без участия в генерации графика</h3>
+      <p class="muted">Отметьте дни, когда вас не должны назначать при автогенерации. Учётная запись с логином
+        <strong>user</strong> (слот 09:00) не может задавать отгулы.</p>
+      <div class="duty-leave-cal-toolbar">
+        <button type="button" id="dutyLeaveCalPrev" class="btn" aria-label="Предыдущий месяц">←</button>
+        <span id="dutyLeaveCalTitle" class="duty-leave-cal-title"></span>
+        <button type="button" id="dutyLeaveCalNext" class="btn" aria-label="Следующий месяц">→</button>
+      </div>
+      <div id="dutyLeaveCalGrid" class="duty-leave-cal-grid" role="grid" aria-label="Календарь выбора дней"></div>
+      <div class="actions" style="margin-top: 1rem;">
+        <button type="button" id="dutyLeaveSaveBtn" class="btn primary">Сохранить</button>
+        <button type="button" id="dutyLeaveModalCloseBtn" class="btn">Закрыть</button>
+      </div>
+      <div id="dutyLeaveModalMsg" class="msg info" hidden></div>
+    </div>
+  </div>
 
   <div id="employeeExitModal" class="modal-overlay" hidden role="dialog" aria-modal="true"
     aria-labelledby="employeeExitTitle">
@@ -341,11 +781,44 @@
         <label for="eeDomain">Домен</label>
         <input id="eeDomain" type="text" autocomplete="off" placeholder="например rz" />
       </div>
+      <div class="field ee-blocks-field">
+        <div class="muted" style="margin-bottom: 0.35rem;"><strong>Блоки текста</strong> (снимите галочки с лишнего)</div>
+        <div class="ee-blocks-grid">
+          <label class="checkbox-label"><input type="checkbox" name="eeBlock" value="company" checked /> Компания,
+            приветствие</label>
+          <label class="checkbox-label"><input type="checkbox" name="eeBlock" value="bitlocker" checked /> BitLocker</label>
+          <label class="checkbox-label"><input type="checkbox" name="eeBlock" value="credentials" checked /> Логин и
+            пароль</label>
+          <label class="checkbox-label"><input type="checkbox" name="eeBlock" value="domain" checked /> Домен и пример
+            УЗ</label>
+          <label class="checkbox-label"><input type="checkbox" name="eeBlock" value="portal_intro" checked /> Вход в
+            сервисы (общее)</label>
+          <label class="checkbox-label"><input type="checkbox" name="eeBlock" value="bitrix" checked /> Битрикс24</label>
+          <label class="checkbox-label"><input type="checkbox" name="eeBlock" value="outlook" checked /> Outlook</label>
+          <label class="checkbox-label"><input type="checkbox" name="eeBlock" value="zoom" checked /> Zoom</label>
+          <label class="checkbox-label"><input type="checkbox" name="eeBlock" value="notes" checked /> Важно (папки)</label>
+          <label class="checkbox-label"><input type="checkbox" name="eeBlock" value="support" checked /> Телефон
+            поддержки</label>
+        </div>
+      </div>
       <div class="actions">
         <button id="employeeExitGenerateBtn" type="button" class="btn primary">Сформировать инструкцию</button>
+        <button id="employeeExitShareQrBtn" type="button" class="btn">Публичная ссылка и QR</button>
         <button id="employeeExitDownloadBtn" type="button" class="btn">Скачать Word (.docx)</button>
         <button id="employeeExitCopyBtn" type="button" class="btn">Копировать</button>
         <button id="employeeExitCloseBtn" type="button" class="btn">Закрыть</button>
+      </div>
+      <div id="employeeExitShareBlock" class="ee-share-block" hidden>
+        <p class="muted">
+          Ссылка и QR ведут на страницу с тем же текстом (срок хранения задаётся на сервере). Не передавайте посторонним — в тексте есть пароль.
+        </p>
+        <p><a id="eePublicLink" href="#" target="_blank" rel="noopener noreferrer"></a></p>
+        <div class="ee-qr-wrap">
+          <img id="eeQrImg" alt="QR на страницу с инструкцией" width="220" height="220" hidden />
+        </div>
+        <div class="actions">
+          <button id="employeeExitQrDownloadBtn" type="button" class="btn" hidden>Скачать QR (PNG)</button>
+        </div>
       </div>
       <div class="field">
         <label for="eeOutput">Текст инструкции</label>
@@ -355,7 +828,7 @@
     </div>
   </div>
 
-  <script src="./app.js?v=20260416-1" defer></script>
+  <script src="./app.js?v=20260518-resources-favorites-empty" defer></script>
 </body>
 
 </html>

@@ -6,6 +6,18 @@ from app.database import get_db
 from app.models import User
 
 
+def user_has_capability(user: User, capability: str) -> bool:
+    if user.role == "admin":
+        return True
+    if capability == "manage_duties":
+        return bool(user.can_manage_duties)
+    if capability == "manage_reports":
+        return bool(user.can_manage_reports)
+    if capability == "manage_notifications":
+        return bool(user.can_manage_notifications)
+    return False
+
+
 def is_bootstrap_admin_account(user: User) -> bool:
     """Учётная запись из BOOTSTRAP_ADMIN_* при первом запуске; снятие прав с неё запрещено."""
     from app.config import settings
@@ -46,6 +58,38 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return current_user
+
+
+def require_capability(capability: str):
+    def _require(current_user: User = Depends(get_current_user)) -> User:
+        if not user_has_capability(current_user, capability):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        return current_user
+
+    return _require
+
+
+def require_capability_any(*capabilities: str):
+    def _require(current_user: User = Depends(get_current_user)) -> User:
+        if any(user_has_capability(current_user, c) for c in capabilities):
+            return current_user
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    return _require
+
+
+def require_admin_or_any_capability(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role == "admin":
+        return current_user
+    if any(
+        [
+            bool(current_user.can_manage_duties),
+            bool(current_user.can_manage_reports),
+            bool(current_user.can_manage_notifications),
+        ]
+    ):
+        return current_user
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
 
 def require_support_or_admin(current_user: User = Depends(get_current_user)) -> User:

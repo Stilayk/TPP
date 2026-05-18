@@ -4,10 +4,17 @@ bootstrap-админ (TPP_BOOTSTRAP_ADMIN, по умолчанию как TPP_AD
 """
 import json
 import os
+import sys
 import urllib.error
 import urllib.request
 from collections import defaultdict
 from datetime import date, timedelta
+from pathlib import Path
+
+_root = Path(__file__).resolve().parent
+if str(_root) not in sys.path:
+    sys.path.insert(0, str(_root))
+from rf_calendar_for_checks import is_day_skipped_by_auto_generation
 
 BASE = os.environ.get("TPP_API_BASE", "http://127.0.0.1:8000")
 ADMIN_USER = os.environ.get("TPP_ADMIN_USER", "admin")
@@ -70,6 +77,9 @@ def main():
 
     d = start
     while d <= end:
+        if is_day_skipped_by_auto_generation(d):
+            d += timedelta(days=1)
+            continue
         _, duties = call(opener, f"/api/duties?date={d.isoformat()}", "GET")
         slots = duties.get("slots") or []
         per_user: dict[int, int] = defaultdict(int)

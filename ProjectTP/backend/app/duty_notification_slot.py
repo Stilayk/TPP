@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 
 from app.duty_slots import duty_slot_for_dt
+from app.duty_tz import anchor_dispatch_at
 
 RELAXED_SLOT_TOLERANCE = timedelta(minutes=3)
 
@@ -29,7 +30,7 @@ def resolve_notification_slot(
     strict_timing=True: после сдвига offset секунды и микросекунды должны быть 0, минуты — 00.
     strict_timing=False: якорь (at+offset) снапится к ближайшему часу в пределах RELAXED_SLOT_TOLERANCE.
     """
-    anchor = (at or datetime.now()) + timedelta(minutes=offset_minutes)
+    anchor = anchor_dispatch_at(at) + timedelta(minutes=offset_minutes)
     if strict_timing:
         target_dt = anchor
         # Как раньше в duties: достаточно ровно :00 минут после сдвига (cron APScheduler шлёт с секундой 0).

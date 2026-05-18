@@ -23,6 +23,21 @@ docker compose up -d --build
 
 Целевой рантайм контейнеров: **Docker Engine** + `docker compose` (см. раздел 1 в файле выше).
 
-## Скрипты
+## CI и тесты
+
+- В корне репозитория — `.gitlab-ci.yml`: job **`backend-pytest`** (`pytest` в `ProjectTP/backend/tests/`). Линтеры в pipeline не подключались (минимальный объём); при необходимости добавьте отдельный job.
+- Локально: `cd ProjectTP/backend && pip install -r requirements.txt && pytest -q`.
+
+## Эксплуатация API
+
+- **Liveness:** `GET /api/health` — процесс жив (`{"ok": true, "service": "projecttp"}`).
+- **Readiness (БД):** `GET /api/ready` — выполняется `SELECT 1`; при недоступности Postgres — **503**.
+- **Вход:** после **12** неудачных попыток с одного IP и логина за **15 минут** — **429** (счётчик в памяти процесса; при нескольких воркерах каждый ведёт свой учёт). Успешный вход сбрасывает счётчик для этой пары.
+- **Сессия:** cookie `session`, параметр **Max-Age** задаётся **`SESSION_MAX_AGE_SECONDS`** (см. `.env.example`); для HTTPS включайте `SESSION_COOKIE_HTTPS_ONLY=true`.
+- **Статика:** при изменении `app.js` / `styles.css` поднимайте query-string `?v=…` в `index.html` и `login.html`, чтобы сбросить кэш у браузеров.
+
+## Модульность фронта (задача №65)
+
+Тексты блоков инструкции «выход сотрудника» собираются на сервере (`employee_exit_blocks.py`). Список чекбоксов в `index.html` должен соответствовать идентификаторам блоков; при добавлении блока обновляйте backend и разметку.
 
 - `scripts/setup-docker-rocky.sh` — установка Docker CE и compose plugin на Rocky Linux 8/9.

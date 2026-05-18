@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 
+from app.bitrix_mention import bitrix_im_display_name
+from app.bitrix_notify import bitrix_im_message_add, bitrix_webhook_base_url
 from app.database import get_db
 from app.deps import ensure_support_or_admin_user, get_current_user
 from app.duty_slots import slot_start_time_str
@@ -13,6 +16,32 @@ from app.models import DutyAssignment, DutySwapRequest, User
 from app.schemas import DutySwapCreateRequest, DutySwapDecisionRequest, DutySwapOut
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+def notify_duty_swap_target_bitrix(
+    *,
+    requester: User,
+    target_user: User,
+    swap_date: date,
+    from_slot: int,
+    to_slot: int,
+) -> None:
+    """Личное сообщение в Битрикс адресату обмена (не блокирует создание заявки при ошибке)."""
+    bx_url = bitrix_webhook_base_url()
+    bid = target_user.bitrix_user_id
+    if not bx_url or bid is None:
+        return
+    who = bitrix_im_display_name(requester)
+    msg = (
+        f"{who} предлагает обменяться дежурствами на {swap_date.isoformat()}: "
+        f"ваш слот {slot_start_time_str(to_slot)} ↔ слот инициатора {slot_start_time_str(from_slot)}. "
+        "Ответьте в приложении (раздел «Обмен дежурствами»)."
+    )
+    try:
+        bitrix_im_message_add(bx_url, str(int(bid)), msg)
+    except HTTPException as e:
+        logger.warning("Duty swap Bitrix notify failed: %s", e.detail)
 
 
 @router.post("/api/duty-swaps", response_model=DutySwapOut)
@@ -68,6 +97,13 @@ def create_duty_swap_request(
     db.add(row)
     db.commit()
     db.refresh(row)
+    notify_duty_swap_target_bitrix(
+        requester=current_user,
+        target_user=target_user,
+        swap_date=payload.date,
+        from_slot=payload.from_slot,
+        to_slot=payload.to_slot,
+    )
     return DutySwapOut(
         id=row.id,
         date=row.date,

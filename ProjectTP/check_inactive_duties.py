@@ -35,11 +35,9 @@ ids = [slot["user"]["id"] for slot in duties["slots"] if slot.get("user")]
 print("used_user_ids:", sorted(set(ids)))
 print("inactive_present:", u2["id"] in ids)
 
-status, _ = req(
-    "/api/duties/batch",
-    "POST",
-    {"date": "2026-04-02", "assignments": [{"slot": 0, "user_id": u2["id"]}]},
-)
+full_day = [{"slot": s, "user_id": None} for s in range(11)]
+full_day[0] = {"slot": 0, "user_id": u2["id"]}
+status, _ = req("/api/duties/batch", "POST", {"date": "2026-04-02", "assignments": full_day})
 print("batch_inactive_user:", status)
 
 req(f"/api/admin/users/{u1['id']}", "DELETE")

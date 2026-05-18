@@ -5,7 +5,13 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from app.database import get_db
-from app.deps import ensure_support_or_admin_user, is_bootstrap_admin_account, require_admin
+from app.deps import (
+    ensure_support_or_admin_user,
+    is_bootstrap_admin_account,
+    require_admin,
+    require_admin_or_any_capability,
+)
+from app.duty_leave_ops import leave_dates_map_from_today, list_leave_dates_from_today
 from app.models import AdminRoleAudit, DailyReport, DutySwapRequest, ReportEntry, User
 from app.schemas import (
     AdminBitrixUserIdRequest,
@@ -13,7 +19,9 @@ from app.schemas import (
     AdminDutyStatusRequest,
     AdminRoleAuditOut,
     AdminUpdateUserRequest,
+    AdminUpdateUserPermissionsRequest,
     CreateSupportUserRequest,
+    UserPermissionsOut,
     UserOut,
 )
 from app.security import hash_password
@@ -22,7 +30,7 @@ from app.services import exports_dir
 router = APIRouter()
 
 
-def _user_out(u: User) -> UserOut:
+def _user_out(u: User, duty_leave_dates: list | None = None) -> UserOut:
     return UserOut(
         id=u.id,
         username=u.username,
@@ -31,13 +39,21 @@ def _user_out(u: User) -> UserOut:
         is_active_for_duties=bool(u.is_active_for_duties),
         is_bootstrap_admin=is_bootstrap_admin_account(u),
         bitrix_user_id=u.bitrix_user_id,
+        permissions=UserPermissionsOut(
+            can_manage_duties=bool(u.can_manage_duties),
+            can_manage_reports=bool(u.can_manage_reports),
+            can_manage_notifications=bool(u.can_manage_notifications),
+        ),
+        last_login_at=u.last_login_at,
+        duty_leave_dates=list(duty_leave_dates or []),
     )
 
 
 @router.get("/api/admin/users")
-def admin_list_users(current_user: User = Depends(require_admin), db=Depends(get_db)) -> list[UserOut]:
+def admin_list_users(current_user: User = Depends(require_admin_or_any_capability), db=Depends(get_db)) -> list[UserOut]:
     users = db.execute(select(User).order_by(User.role.desc(), User.id)).scalars().all()
-    return [_user_out(u) for u in users]
+    lm = leave_dates_map_from_today(db, [u.id for u in users])
+    return [_user_out(u, lm.get(u.id, [])) for u in users]
 
 
 @router.get("/api/admin/role-audit", response_model=list[AdminRoleAuditOut])
@@ -78,7 +94,7 @@ def admin_create_user(payload: CreateSupportUserRequest, current_user: User = De
         db.rollback()
         raise HTTPException(status_code=409, detail="Username already exists")
     db.refresh(user)
-    return _user_out(user)
+    return _user_out(user, list_leave_dates_from_today(db, user_id=user.id))
 
 
 @router.post("/api/admin/users/{user_id}/grant-admin", response_model=UserOut)
@@ -103,7 +119,7 @@ def admin_grant_admin(
     )
     db.commit()
     db.refresh(user)
-    return _user_out(user)
+    return _user_out(user, list_leave_dates_from_today(db, user_id=user.id))
 
 
 @router.post("/api/admin/users/{user_id}/revoke-admin", response_model=UserOut)
@@ -138,7 +154,7 @@ def admin_revoke_admin(
     )
     db.commit()
     db.refresh(user)
-    return _user_out(user)
+    return _user_out(user, list_leave_dates_from_today(db, user_id=user.id))
 
 
 @router.patch("/api/admin/users/{user_id}/bitrix-user", response_model=UserOut)
@@ -153,7 +169,7 @@ def admin_update_bitrix_user_id(
     db.add(user)
     db.commit()
     db.refresh(user)
-    return _user_out(user)
+    return _user_out(user, list_leave_dates_from_today(db, user_id=user.id))
 
 
 @router.patch("/api/admin/users/{user_id}/duty-status", response_model=UserOut)
@@ -168,7 +184,7 @@ def admin_update_user_duty_status(
     db.add(user)
     db.commit()
     db.refresh(user)
-    return _user_out(user)
+    return _user_out(user, list_leave_dates_from_today(db, user_id=user.id))
 
 
 @router.patch("/api/admin/users/{user_id}", response_model=UserOut)
@@ -188,7 +204,26 @@ def admin_update_user_profile(
         db.rollback()
         raise HTTPException(status_code=409, detail="Username already exists")
     db.refresh(user)
-    return _user_out(user)
+    return _user_out(user, list_leave_dates_from_today(db, user_id=user.id))
+
+
+@router.patch("/api/admin/users/{user_id}/permissions", response_model=UserOut)
+def admin_update_user_permissions(
+    user_id: int,
+    payload: AdminUpdateUserPermissionsRequest,
+    current_user: User = Depends(require_admin),
+    db=Depends(get_db),
+) -> UserOut:
+    user = ensure_support_or_admin_user(db, user_id)
+    if user.role == "admin":
+        raise HTTPException(status_code=400, detail="Permissions for admin users are always full")
+    user.can_manage_duties = bool(payload.can_manage_duties)
+    user.can_manage_reports = bool(payload.can_manage_reports)
+    user.can_manage_notifications = bool(payload.can_manage_notifications)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return _user_out(user, list_leave_dates_from_today(db, user_id=user.id))
 
 
 @router.post("/api/admin/users/{user_id}/password")

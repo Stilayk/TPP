@@ -13,3 +13,5 @@ passlib[bcrypt]>=1.7.4
 bcrypt>=4.0.1,<5
 apscheduler>=3.10.4,<4.0
 tzdata>=2024.1
+holidays>=0.48
+qrcode[pil]>=7.4.2

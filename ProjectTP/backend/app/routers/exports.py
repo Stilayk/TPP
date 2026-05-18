@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import select
 
 from app.database import get_db
-from app.deps import get_current_user, require_admin
+from app.deps import get_current_user, require_capability
 from app.models import DailyReport, User
 from app.services import (
     EXPORT_FILENAME_RE,
@@ -67,7 +67,7 @@ def download_export(filename: str, current_user: User = Depends(get_current_user
 @router.get("/api/admin/reports/export-all")
 def admin_export_all_reports_excel(
     date_: date = Query(..., alias="date"),
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_capability("manage_reports")),
     db=Depends(get_db),
 ) -> StreamingResponse:
     support_users = db.execute(

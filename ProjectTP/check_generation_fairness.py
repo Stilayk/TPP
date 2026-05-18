@@ -5,10 +5,17 @@ Happy-path: после генерации графика суммы назнач
 """
 import json
 import os
+import sys
 import urllib.error
 import urllib.request
 from collections import defaultdict
 from datetime import date, timedelta
+from pathlib import Path
+
+_root = Path(__file__).resolve().parent
+if str(_root) not in sys.path:
+    sys.path.insert(0, str(_root))
+from rf_calendar_for_checks import is_day_skipped_by_auto_generation
 
 BASE = os.environ.get("TPP_API_BASE", "http://127.0.0.1:8000")
 ADMIN_USER = os.environ.get("TPP_ADMIN_USER", "admin")
@@ -71,6 +78,37 @@ def main():
     )
     if not isinstance(gen, dict) or "created_assignments" not in gen:
         raise SystemExit(f"generate unexpected: {gen}")
+
+    d = start
+    weekday_slot_patterns: list[tuple] = []
+    while d <= end:
+        if not is_day_skipped_by_auto_generation(d):
+            _, duties = call(opener, f"/api/duties?date={d.isoformat()}", "GET")
+            slots = sorted(duties.get("slots") or [], key=lambda s: int(s.get("slot") or 0))
+            ids = tuple(((s.get("user") or {}).get("id")) for s in slots)
+            if len(ids) == 11 and all(i is not None for i in ids):
+                weekday_slot_patterns.append(ids)
+        d += timedelta(days=1)
+    if (
+        len(support_ids) >= 12
+        and len(weekday_slot_patterns) >= 2
+        and len(set(weekday_slot_patterns)) < 2
+    ):
+        raise SystemExit(
+            "generation TASK67: identical (slot order → user id) vectors on multiple weekdays in range; "
+            "check duty_generation flush / multi-day logic."
+        )
+
+    d = start
+    while d <= end:
+        if is_day_skipped_by_auto_generation(d):
+            _, duties = call(opener, f"/api/duties?date={d.isoformat()}", "GET")
+            for s in duties.get("slots") or []:
+                if s.get("user"):
+                    raise SystemExit(
+                        f"non-working day {d.isoformat()} must have no generated duties, got slot {s.get('slot')}"
+                    )
+        d += timedelta(days=1)
 
     counts: dict[int, int] = defaultdict(int)
     d = start

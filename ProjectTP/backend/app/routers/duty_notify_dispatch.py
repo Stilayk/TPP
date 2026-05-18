@@ -1,4 +1,4 @@
-"""Дублирующие эндпоинты dispatch с параметром strict_timing (основной duties.py без прав на запись)."""
+"""Дублирующие эндпоинты dispatch с параметром strict_timing (см. также duties_live.py)."""
 
 from __future__ import annotations
 

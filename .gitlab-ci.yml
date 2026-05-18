@@ -1,0 +1,19 @@
+# Минимальный CI: pytest backend (задача №59). При отсутствии GitLab файл можно игнорировать.
+stages:
+  - test
+
+variables:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+backend-pytest:
+  stage: test
+  image: python:3.12-bookworm
+  script:
+    - python -m pip install --upgrade pip
+    - python -m pip install -r ProjectTP/backend/requirements.txt
+    - cd ProjectTP/backend && python -m pytest -q
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - when: manual
+      allow_failure: true

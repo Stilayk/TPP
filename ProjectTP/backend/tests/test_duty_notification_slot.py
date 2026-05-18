@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from unittest.mock import MagicMock, patch
 
 from app.duty_notification_slot import RELAXED_SLOT_TOLERANCE, resolve_notification_slot
@@ -151,3 +151,14 @@ def test_dispatch_relaxed_time_sends() -> None:
 
 def test_relaxed_tolerance_constant() -> None:
     assert RELAXED_SLOT_TOLERANCE.total_seconds() == 180
+
+
+def test_resolve_strict_utc_input_maps_to_moscow_slot() -> None:
+    """06:55 UTC + offset 5 min = 10:00 МСК → слот с индексом 3 (час 10)."""
+    duty_date, duty_slot, _ = resolve_notification_slot(
+        at=datetime(2026, 4, 15, 6, 55, 0, tzinfo=timezone.utc),
+        offset_minutes=5,
+        strict_timing=True,
+    )
+    assert duty_date == date(2026, 4, 15)
+    assert duty_slot == 3

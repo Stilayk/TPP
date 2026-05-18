@@ -83,4 +83,33 @@ status, raw = req_bin(
 print("docx:", status, "bytes", len(raw))
 assert status == 200
 assert raw[:2] == b"PK"
+
+status, share = req(
+    "/api/ee_instruction/share",
+    "POST",
+    {
+        "fio": "Иванов Иван Иванович",
+        "login": "ivanovii",
+        "password": "TempPass123",
+        "domain": "rz",
+        "public_base_url": BASE,
+    },
+)
+print("share:", status, share)
+assert status == 200
+token = (share or {}).get("token") or ""
+pub = (share or {}).get("public_url") or ""
+assert token and pub.endswith("/p/ee/" + token)
+
+req_plain = urllib.request.Request(BASE + "/p/ee/" + token, method="GET")
+with urllib.request.urlopen(req_plain, timeout=10) as resp:
+    assert resp.status == 200
+    html_body = resp.read().decode("utf-8")
+assert "Иванов Иван Иванович" in html_body
+
+st_qr, png = req_bin("/api/ee_instruction/qr/" + token, "GET", None)
+print("qr_png:", st_qr, "bytes", len(png))
+assert st_qr == 200
+assert isinstance(png, (bytes, bytearray)) and png[:8] == b"\x89PNG\r\n\x1a\n"
+
 print("ok")
