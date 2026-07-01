@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -20,14 +20,15 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(16), nullable=False, index=True)  # "admin" | "support"
     password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
     is_active_for_duties: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_eligible_for_morning_duties: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # Тонкие права для делегирования без роли admin.
     can_manage_duties: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     can_manage_reports: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     can_manage_notifications: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # ID пользователя Битрикс24 для упоминаний [USER=id] в чате; не секрет
     bitrix_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    # Успешный POST /api/login (UTC naive, как остальные datetime в проекте)
-    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
+    # Последняя активность в приложении (UTC naive, как остальные datetime в проекте)
+    last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
 
     duty_assignments: Mapped[list["DutyAssignment"]] = relationship(
         back_populates="support_user", cascade="all,delete"
@@ -191,3 +192,19 @@ class EmployeeExitInstructionShare(Base):
     public_view_url: Mapped[str] = mapped_column(String(768), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class UsefulResource(Base):
+    """Карточка вкладки «Полезные ресурсы»; категории фильтров задаёт администратор."""
+
+    __tablename__ = "useful_resources"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    slug: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    image_path: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    color: Mapped[str] = mapped_column(String(32), nullable=False, default="#2563eb")
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    categories: Mapped[list] = mapped_column(JSON, nullable=False)

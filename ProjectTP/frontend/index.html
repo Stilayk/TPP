@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- При деплое в подпапку добавьте: <meta name="api-base" content="/имя_подпапки" /> -->
   <title>Техподдержка</title>
-  <link rel="stylesheet" href="./styles.css?v=20260518-resources-favorites-empty" />
+  <link rel="stylesheet" href="./styles.css?v=20260521-recent-activity" />
 </head>
 
 <body>
@@ -169,21 +169,8 @@
 
               <div class="card graph-side-card">
                 <h3>Недавняя активность</h3>
-                <div id="recentActivityList" class="activity-list">
-                  <div class="activity-item">
-                    <span class="activity-dot"></span>
-                    <div>
-                      <strong>График готов к просмотру</strong>
-                      <div class="muted">Данные обновляются при смене даты или вручную.</div>
-                    </div>
-                  </div>
-                  <div class="activity-item">
-                    <span class="activity-dot"></span>
-                    <div>
-                      <strong>Обмены дежурствами</strong>
-                      <div class="muted">Актуальные запросы отображаются выше.</div>
-                    </div>
-                  </div>
+                <div id="recentActivityList" class="activity-list" aria-live="polite">
+                  <div class="muted">Загрузка…</div>
                 </div>
               </div>
             </aside>
@@ -313,6 +300,8 @@
             type="button">Уведомление</button>
           <button class="tab-btn admin-subtab-btn" data-admin-tab="users" role="tab" aria-selected="false"
             type="button">Сотрудники</button>
+          <button class="tab-btn admin-subtab-btn" data-admin-tab="resources" role="tab" aria-selected="false"
+            type="button">Ресурсы</button>
         </div>
 
         <div class="card" id="adminGenerateCard">
@@ -574,6 +563,13 @@
           </div>
         </div>
 
+        <div class="card" id="adminResourcesCard" hidden>
+          <h3>Полезные ресурсы — фильтры</h3>
+          <p class="muted">Отметьте, в каких разделах вкладки «Полезные ресурсы» показывать карточку. Настройка общая для всех пользователей.</p>
+          <div id="adminResourcesMsg" class="msg" hidden></div>
+          <div id="adminResourcesEditor" class="admin-resources-editor"></div>
+        </div>
+
         <div class="card admin-users-page-card" id="adminUsersCard">
           <div class="admin-users-layout">
             <div class="admin-users-main-col">
@@ -623,7 +619,7 @@
                         <th class="admin-users-th-id">ID</th>
                         <th class="admin-users-th-login">Логин</th>
                         <th class="admin-users-th-name">ФИО</th>
-                        <th class="admin-users-th-last">Последний вход</th>
+                        <th class="admin-users-th-last">Был в сети</th>
                         <th class="admin-users-th-bitrix">Битрикс24</th>
                         <th class="admin-users-th-role">Роль</th>
                         <th class="admin-users-th-perms">Права</th>
@@ -654,6 +650,12 @@
                   Участвует в генерации дежурств
                 </label>
                 <span id="adminDutyLeaveHint" class="muted admin-duty-leave-hint" hidden></span>
+              </div>
+              <div class="field checkbox">
+                <label class="checkbox-label">
+                  <input id="adminMorningDutyToggle" type="checkbox" />
+                  Участвует в утренних дежурствах (07:00–08:00)
+                </label>
               </div>
               <div class="field">
                 <label for="adminNewPassword">Новый пароль</label>
@@ -828,7 +830,7 @@
     </div>
   </div>
 
-  <script src="./app.js?v=20260518-resources-favorites-empty" defer></script>
+  <script src="./app.js?v=20260521-recent-activity" defer></script>
 </body>
 
 </html>

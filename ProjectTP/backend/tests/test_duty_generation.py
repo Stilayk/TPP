@@ -7,7 +7,11 @@ import random
 from app.duty_generation import (
     MORNING_FIRST_SLOT_INDEX,
     MORNING_SECOND_SLOT_INDEX,
-    _had_same_slot_or_morning_block_yesterday,
+    MAX_MORNING_DUTIES_PER_DAY,
+    MAX_REGULAR_DUTIES_PER_DAY,
+    _eligible_for_next_slot,
+    _had_same_morning_block_yesterday,
+    _had_same_regular_slot_yesterday,
     _pick_user_for_slot,
 )
 
@@ -27,6 +31,8 @@ def test_pick_prefers_user_who_did_not_have_this_slot_yesterday():
         yesterday_slots,
         pool_gt_slots=False,
         current_slot=5,
+        max_per_day=MAX_REGULAR_DUTIES_PER_DAY,
+        morning=False,
         rng=rng,
     )
     assert uid == 202
@@ -47,13 +53,30 @@ def test_pick_morning_prefers_user_without_morning_block_yesterday():
         yesterday_slots,
         pool_gt_slots=False,
         current_slot=MORNING_FIRST_SLOT_INDEX,
+        max_per_day=MAX_MORNING_DUTIES_PER_DAY,
+        morning=True,
         rng=rng,
     )
     assert uid == 2
 
 
-def test_had_same_slot_or_morning_block_yesterday():
-    assert _had_same_slot_or_morning_block_yesterday({3}, 3) is True
-    assert _had_same_slot_or_morning_block_yesterday({3}, 4) is False
-    assert _had_same_slot_or_morning_block_yesterday({MORNING_SECOND_SLOT_INDEX}, MORNING_FIRST_SLOT_INDEX) is True
-    assert _had_same_slot_or_morning_block_yesterday(set(), MORNING_FIRST_SLOT_INDEX) is False
+def test_morning_assignee_can_take_regular_slot_same_day():
+    """Утренний дежурный с двумя утренними слотами допустим для обычного слота."""
+    eligible = _eligible_for_next_slot(
+        {12: MAX_MORNING_DUTIES_PER_DAY},
+        [12, 34],
+        MAX_REGULAR_DUTIES_PER_DAY,
+    )
+    assert 12 in eligible
+
+
+def test_had_same_morning_block_yesterday():
+    assert _had_same_morning_block_yesterday({MORNING_SECOND_SLOT_INDEX}) is True
+    assert _had_same_morning_block_yesterday(set()) is False
+    assert _had_same_morning_block_yesterday({5}) is False
+
+
+def test_had_same_regular_slot_yesterday():
+    assert _had_same_regular_slot_yesterday({3}, 3) is True
+    assert _had_same_regular_slot_yesterday({3}, 4) is False
+    assert _had_same_regular_slot_yesterday({MORNING_SECOND_SLOT_INDEX}, 5) is False

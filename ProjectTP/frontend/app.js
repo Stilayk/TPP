@@ -12,6 +12,8 @@
     hasAdminAccess: false,
     employees: [],
     dutiesLoadedForDate: null,
+    lastDutiesLoadedAt: null,
+    localActivities: [],
     reportsLoadedKey: null,
     swapInboxTimerId: null,
     currentDutyTimerId: null,
@@ -37,90 +39,9 @@
     resourceGridFilter: "all",
   };
 
-  const usefulResources = [
-    {
-      title: "Open WebUI",
-      description: "Интерфейс LLM для работы команды",
-      url: "https://i.hpdd.ru/",
-      image: "./resource-images/open-webui.png",
-      color: "#0f172a",
-      category: "admin",
-    },
-    {
-      title: "Админка Outlook",
-      description: "Администрирование почты Outlook",
-      url:
-        "https://mail.hpdd.ru/owa/auth/logon.aspx?replaceCurrent=1&reason=3&url=https%3a%2f%2fmail.hpdd.ru%2fowa%2fauth%2flogon.aspx%3furl%3dhttps%253a%252f%252fmail.hpdd.ru%252fecp%252f%253fexsvurl%253d1%2526p%253dDistributionGroups%23replaceCurrent%3d1",
-      image: "./resource-images/outlook-admin.png",
-      color: "#0078d4",
-      category: "communications",
-    },
-    {
-      title: "YouTrack",
-      description: "Трекер задач команды",
-      url:
-        "https://youtrack.hpdd.ru/hub/auth/login?response_type=token&client_id=386f73f9-b1a1-4a9a-8fa6-e9184a1471d0&redirect_uri=https:%2F%2Fyoutrack.hpdd.ru%2Foauth&scope=386f73f9-b1a1-4a9a-8fa6-e9184a1471d0%20Upsource%20TeamCity%20YouTrack%2520Slack%2520Integration%200-0-0-0-0&state=f59cee64-165b-4121-b407-b5b7889da362",
-      image: "./resource-images/youtrack.png",
-      color: "#e91e63",
-      category: "services",
-    },
-    {
-      title: "Graylog",
-      description: "Мониторинг и логи",
-      url: "https://new-graylog.corp.hpdd.ru/welcome",
-      image: "./resource-images/graylog.png",
-      color: "#0ea5e9",
-      category: "monitoring",
-    },
-    {
-      title: "КиберБэкап",
-      description: "Портал резервного копирования",
-      url: "https://hpdd-bcp-mng02.corp.hpdd.ru:9877/",
-      image: "./resource-images/cyber-backup.png",
-      color: "#1d4ed8",
-      category: "services",
-    },
-    {
-      title: "Админка Битрикс",
-      description: "Администрирование портала Битрикс",
-      url: "https://portal.hpdd.ru/bitrix/admin/user_edit.php?lang=ru&ID=3582&user_edit_active_tab=edit1#authorize",
-      image: "./resource-images/bitrix-admin.png",
-      color: "#38bdf8",
-      category: "communications",
-    },
-    {
-      title: "HRlink",
-      description: "Личный кабинет сотрудника",
-      url: "https://lk.hr-link.ru/employee",
-      image: "./resource-images/hrlink.png",
-      color: "#2563eb",
-      category: "services",
-    },
-    {
-      title: "Админка Zoom",
-      description: "Панель управления Zoom",
-      url: "https://hpdd-ru.zoom.us/myhome",
-      image: "./resource-images/zoom-admin.png",
-      color: "#2563eb",
-      category: "communications",
-    },
-    {
-      title: "ServiceDesk",
-      description: "Система заявок и обращений",
-      url: "https://esd.hpdd.ru/HomePage.do?view_type=my_view",
-      image: "./resource-images/servicedesk.png",
-      color: "#0f172a",
-      category: "services",
-    },
-    {
-      title: "Proxy admin",
-      description: "Панель администрирования Proxy",
-      url: "https://proxy-portal.hpdd.ru/",
-      image: "./resource-images/proxy-admin.png",
-      color: "#1f2937",
-      category: "admin",
-    },
-  ];
+  let usefulResources = [];
+
+  const resourceFilterIds = ["communications", "admin", "monitoring", "services"];
 
   const resourceCategoryLabels = {
     all: "Все",
@@ -314,6 +235,52 @@
     return usefulResources.find((resource) => resource.title === title);
   }
 
+  function resourceCategoriesOf(resource) {
+    if (Array.isArray(resource?.categories) && resource.categories.length) return resource.categories;
+    if (resource?.category) return [resource.category];
+    return ["services"];
+  }
+
+  function resourceCategoryLabelText(resource) {
+    return resourceCategoriesOf(resource)
+      .map((c) => resourceCategoryLabels[c] || c)
+      .join(" · ");
+  }
+
+  function resourceMatchesCategory(resource, activeCategory) {
+    if (!activeCategory || activeCategory === "all") return true;
+    return resourceCategoriesOf(resource).includes(activeCategory);
+  }
+
+  function mapUsefulResourceFromApi(row) {
+    return {
+      id: row.id,
+      slug: row.slug,
+      title: row.title,
+      description: row.description || "",
+      url: row.url,
+      image: row.image || "",
+      color: row.color || "#2563eb",
+      categories: Array.isArray(row.categories) ? row.categories : [],
+    };
+  }
+
+  async function apiGetUsefulResources() {
+    return apiFetchJson("/api/useful-resources");
+  }
+
+  async function apiPatchUsefulResourceCategories(resourceId, categories) {
+    return apiFetchJson(`/api/admin/useful-resources/${resourceId}`, {
+      method: "PATCH",
+      body: { categories },
+    });
+  }
+
+  async function loadUsefulResourcesFromApi() {
+    const rows = await apiGetUsefulResources();
+    usefulResources = (Array.isArray(rows) ? rows : []).map(mapUsefulResourceFromApi);
+  }
+
   function resourcesStorageUserId() {
     const id = Number(state.me?.id);
     return Number.isFinite(id) && id > 0 ? id : null;
@@ -497,7 +464,7 @@
       const meta = typeof item === "string" ? "" : item.meta;
       const resource = resourceByTitle(title);
       if (!resource) continue;
-      const category = resourceCategoryLabels[resource.category] || "Сервисы";
+      const category = resourceCategoryLabelText(resource);
       const link = document.createElement("a");
       link.className = "resources-side-item";
       link.href = resource.url;
@@ -541,10 +508,10 @@
     for (const resource of usefulResources) {
       const title = String(resource.title || "");
       const description = String(resource.description || "");
-      const category = resourceCategoryLabels[resource.category] || "Сервисы";
+      const category = resourceCategoryLabelText(resource);
       const haystack = `${title} ${description} ${category}`.toLowerCase();
       if (query && !haystack.includes(query)) continue;
-      if (activeCategory !== "all" && resource.category !== activeCategory) continue;
+      if (!resourceMatchesCategory(resource, activeCategory)) continue;
       if (gridFilter === "favorites" && !favoriteTitles.has(title)) continue;
       if (gridFilter === "recent" && !recentTitles.has(title)) continue;
       const isFavorite = favoriteTitles.has(title);
@@ -650,6 +617,10 @@
     return apiFetchJson("/api/me");
   }
 
+  async function apiTouchPresence() {
+    return apiFetchJson("/api/me/presence", { method: "POST" });
+  }
+
   async function apiLogin({ username, password }) {
     return apiFetchJson("/api/login", {
       method: "POST",
@@ -680,10 +651,13 @@
     });
   }
 
-  async function apiAdminUpdateDutyStatus(userId, isActive) {
+  async function apiAdminUpdateDutyStatus(userId, isActive, isMorningEligible) {
     return apiFetchJson(`/api/admin/users/${encodeURIComponent(userId)}/duty-status`, {
       method: "PATCH",
-      body: { is_active_for_duties: Boolean(isActive) },
+      body: {
+        is_active_for_duties: Boolean(isActive),
+        is_eligible_for_morning_duties: Boolean(isMorningEligible),
+      },
     });
   }
 
@@ -860,6 +834,10 @@
     return apiFetchJson(`/api/duty-swaps/inbox${query.toString() ? `?${query.toString()}` : ""}`);
   }
 
+  async function apiGetRecentActivity(limit = 8) {
+    return apiFetchJson(`/api/activity/recent?limit=${encodeURIComponent(String(limit))}`);
+  }
+
   async function apiDecideDutySwapRequest(swapId, action) {
     return apiFetchJson(`/api/duty-swaps/${encodeURIComponent(swapId)}/decision`, {
       method: "POST",
@@ -916,13 +894,38 @@
     return state.employees;
   }
 
-  /** last_login_at в БД — UTC без суффикса; показываем как локальное время браузера. */
-  function formatLastLoginAt(iso) {
-    if (!iso) return "—";
+  function parseUtcNaiveDateTime(iso) {
+    if (!iso) return null;
     const s = String(iso).trim();
     const d = /Z|[+-]\d{2}:?\d{2}$/.test(s) ? new Date(s) : new Date(`${s.replace(" ", "T")}Z`);
-    if (Number.isNaN(d.getTime())) return "—";
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  /** Дата/время из БД (UTC naive) для отчётов и прочих меток. */
+  function formatDateTimeShort(iso) {
+    const d = parseUtcNaiveDateTime(iso);
+    if (!d) return "—";
     return d.toLocaleString("ru-RU", { dateStyle: "short", timeStyle: "short" });
+  }
+
+  /** last_seen_at в БД — UTC; ≥24 ч — «был в сети ДД.ММ.ГГГГ»; <24 ч — «сегодня/вчера, ЧЧ:ММ» (колонка «Был в сети»). */
+  function formatLastSeenAt(iso) {
+    const d = parseUtcNaiveDateTime(iso);
+    if (!d) return "—";
+    const now = new Date();
+    const diffHours = (now.getTime() - d.getTime()) / 3600000;
+    if (diffHours >= 24) {
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      return `был в сети ${dd}.${mm}.${yyyy}`;
+    }
+    const time = d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    if (dayStart === todayStart) return `сегодня, ${time}`;
+    if (dayStart === todayStart - 86400000) return `вчера, ${time}`;
+    return time;
   }
 
   function formatReportStatusRu(status) {
@@ -978,7 +981,9 @@
 
     const tdLast = document.createElement("td");
     tdLast.className = "admin-users-col-lastlogin";
-    tdLast.textContent = formatLastLoginAt(emp.last_login_at);
+    const lastSeenLabel = formatLastSeenAt(emp.last_seen_at);
+    tdLast.textContent = lastSeenLabel;
+    if (lastSeenLabel && lastSeenLabel !== "—") tdLast.title = lastSeenLabel;
 
     const tdBitrix = document.createElement("td");
     tdBitrix.className = "admin-users-col-bitrix";
@@ -1215,6 +1220,83 @@
     }
   }
 
+  function renderAdminResourcesEditor() {
+    const root = $("#adminResourcesEditor");
+    if (!root || !state.isRootAdmin) return;
+    if (!usefulResources.length) {
+      root.innerHTML = '<p class="muted">Список ресурсов пуст. Проверьте миграции БД и перезагрузите страницу.</p>';
+      return;
+    }
+    const headCells = resourceFilterIds
+      .map((id) => `<th scope="col">${escapeHtml(resourceCategoryLabels[id] || id)}</th>`)
+      .join("");
+    const rows = usefulResources
+      .map((resource) => {
+        const cats = new Set(resourceCategoriesOf(resource));
+        const checks = resourceFilterIds
+          .map((id) => {
+            const checked = cats.has(id) ? " checked" : "";
+            const label = escapeHtml(resourceCategoryLabels[id] || id);
+            return `<td class="admin-resources-check"><label><input type="checkbox" data-resource-id="${resource.id}" data-category="${escapeHtml(id)}" aria-label="${label}"${checked} /></label></td>`;
+          })
+          .join("");
+        return `<tr>
+          <th scope="row">${escapeHtml(resource.title)}</th>
+          ${checks}
+          <td><button type="button" class="btn btn-compact" data-action="saveResourceCategories" data-resource-id="${resource.id}">Сохранить</button></td>
+        </tr>`;
+      })
+      .join("");
+    root.innerHTML = `
+      <div class="table-wrap">
+        <table class="admin-resources-table">
+          <thead>
+            <tr>
+              <th scope="col">Ресурс</th>
+              ${headCells}
+              <th scope="col"></th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function initAdminResourcesEditor() {
+    const card = $("#adminResourcesCard");
+    if (!card || card.dataset.bound === "1") return;
+    card.dataset.bound = "1";
+    card.addEventListener("click", async (ev) => {
+      const btn = ev.target.closest('[data-action="saveResourceCategories"]');
+      if (!btn) return;
+      const resourceId = Number(btn.dataset.resourceId);
+      if (!Number.isFinite(resourceId)) return;
+      const msg = $("#adminResourcesMsg");
+      const categories = [];
+      for (const input of card.querySelectorAll(`input[data-resource-id="${resourceId}"][data-category]`)) {
+        if (input.checked) categories.push(input.dataset.category);
+      }
+      if (!categories.length) {
+        showMsg(msg, "Выберите хотя бы один фильтр.", "error");
+        return;
+      }
+      try {
+        btn.disabled = true;
+        const updated = await apiPatchUsefulResourceCategories(resourceId, categories);
+        const idx = usefulResources.findIndex((r) => Number(r.id) === resourceId);
+        if (idx >= 0) usefulResources[idx] = mapUsefulResourceFromApi(updated);
+        renderUsefulResources();
+        renderAdminResourcesEditor();
+        showMsg(msg, "Фильтры сохранены.", "success");
+      } catch (e) {
+        showMsg(msg, e.message || String(e), "error");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+
   function activateAdminSubtab(tabName) {
     const btns = $$(".admin-subtab-btn");
     btns.forEach((b) => {
@@ -1227,6 +1309,7 @@
       generation: "#adminGenerateCard",
       notifications: "#adminNotificationsCard",
       users: "#adminUsersCard",
+      resources: "#adminResourcesCard",
     };
     for (const [name, selector] of Object.entries(map)) {
       const card = $(selector);
@@ -1235,6 +1318,7 @@
       card.hidden = !canShow || name !== tabName;
     }
     state.adminSubtab = tabName;
+    if (tabName === "resources") renderAdminResourcesEditor();
   }
 
   function syncAdminSubtabs() {
@@ -1243,6 +1327,7 @@
       generation: state.canManageDuties,
       notifications: state.canManageNotifications,
       users: state.isRootAdmin,
+      resources: state.isRootAdmin,
     };
     const btns = $$(".admin-subtab-btn");
     for (const btn of btns) {
@@ -1745,12 +1830,14 @@
       }
     }
     state.dutiesLoadedForDate = dateStr;
+    state.lastDutiesLoadedAt = new Date().toISOString();
     state.currentDuties = duties;
 
     updateScheduleTitle(dateStr);
     renderDutiesTable(duties);
     updateCurrentDutyNow();
     showMsg($("#dutiesMsg"), "График загружен.", "success");
+    void refreshRecentActivity();
     const swapD = $("#swapDate")?.value;
     if (swapD === dateStr) {
       try {
@@ -2137,7 +2224,7 @@
     if (elUpdated) {
       let text = "—";
       if (status === "final" && finalizedAt) {
-        text = `${formatLastLoginAt(finalizedAt)} · ${formatShortEmployeeName(empName)}`;
+        text = `${formatDateTimeShort(finalizedAt)} · ${formatShortEmployeeName(empName)}`;
       } else {
         text = `Черновик · ${formatShortEmployeeName(empName)}`;
       }
@@ -2178,9 +2265,9 @@
           rec.employee?.full_name || rec.employee?.username || `ID ${rec.employee_id ?? "?"}`;
         let timeLine = "—";
         if (rec.status === "final" && rec.finalized_at) {
-          timeLine = `Экспорт: ${formatLastLoginAt(rec.finalized_at)}`;
+          timeLine = `Экспорт: ${formatDateTimeShort(rec.finalized_at)}`;
         } else if (rec.updated_at) {
-          timeLine = `Изменено: ${formatLastLoginAt(rec.updated_at)}`;
+          timeLine = `Изменено: ${formatDateTimeShort(rec.updated_at)}`;
         }
         return `<div class="reports-history-item">
           <div class="reports-history-date">${escapeHtml(dateStr)}</div>
@@ -2645,6 +2732,103 @@
     fromSel.onchange = rebuildTo;
   }
 
+  function pushLocalActivity(entry) {
+    const at = entry.at || new Date().toISOString();
+    const row = {
+      id: entry.id || `local-${at}`,
+      kind: entry.kind || "local",
+      title: entry.title || "",
+      detail: entry.detail || "",
+      at,
+      status: entry.status || null,
+    };
+    state.localActivities = [row, ...(state.localActivities || [])].filter(
+      (item, idx, arr) => arr.findIndex((x) => x.id === item.id) === idx,
+    ).slice(0, 5);
+    renderRecentActivity(state._recentActivityCache);
+  }
+
+  function activityDotClass(item) {
+    const status = item?.status || "";
+    if (status === "pending") return "activity-dot activity-dot--pending";
+    if (status === "accepted") return "activity-dot activity-dot--ok";
+    if (status === "rejected") return "activity-dot activity-dot--muted";
+    if (item?.kind === "duties_loaded") return "activity-dot activity-dot--info";
+    return "activity-dot";
+  }
+
+  function buildDutiesLoadedActivity() {
+    if (!state.dutiesLoadedForDate || !state.lastDutiesLoadedAt) return null;
+    const d = parseISODate(state.dutiesLoadedForDate);
+    const dateLabel = d
+      ? d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+      : state.dutiesLoadedForDate;
+    return {
+      id: `duties-${state.dutiesLoadedForDate}`,
+      kind: "duties_loaded",
+      title: `График на ${dateLabel}`,
+      detail: `Обновлён ${formatDateTimeShort(state.lastDutiesLoadedAt)}`,
+      at: state.lastDutiesLoadedAt,
+      status: null,
+    };
+  }
+
+  function mergeRecentActivityItems(apiItems) {
+    const merged = [];
+    const dutiesRow = buildDutiesLoadedActivity();
+    if (dutiesRow) merged.push(dutiesRow);
+    for (const row of state.localActivities || []) merged.push(row);
+    for (const row of Array.isArray(apiItems) ? apiItems : []) merged.push(row);
+    merged.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+    const seen = new Set();
+    const out = [];
+    for (const row of merged) {
+      if (!row?.id || seen.has(row.id)) continue;
+      seen.add(row.id);
+      out.push(row);
+      if (out.length >= 8) break;
+    }
+    return out;
+  }
+
+  function renderRecentActivity(apiItems) {
+    const root = $("#recentActivityList");
+    if (!root) return;
+    if (apiItems !== undefined) state._recentActivityCache = apiItems;
+    const items = mergeRecentActivityItems(state._recentActivityCache);
+    root.innerHTML = "";
+    if (!items.length) {
+      const empty = document.createElement("div");
+      empty.className = "muted";
+      empty.textContent = "Пока нет событий. Загрузите график или создайте обмен дежурствами.";
+      root.appendChild(empty);
+      return;
+    }
+    for (const item of items) {
+      const el = document.createElement("div");
+      el.className = "activity-item";
+      const timeLine = item.at ? formatDateTimeShort(item.at) : "";
+      el.innerHTML = `
+        <span class="${activityDotClass(item)}" aria-hidden="true"></span>
+        <div>
+          <strong>${escapeHtml(item.title || "")}</strong>
+          <div class="muted">${escapeHtml(item.detail || "")}</div>
+          ${timeLine ? `<div class="activity-time muted">${escapeHtml(timeLine)}</div>` : ""}
+        </div>
+      `;
+      root.appendChild(el);
+    }
+  }
+
+  async function refreshRecentActivity() {
+    try {
+      const rows = await apiGetRecentActivity(8);
+      renderRecentActivity(rows);
+    } catch {
+      renderRecentActivity([]);
+    }
+  }
+
   function renderSwapInbox(items) {
     const root = $("#swapInboxList");
     if (!root) return;
@@ -2684,6 +2868,7 @@
     const dateStr = $("#swapDate")?.value || $("#dutiesDate")?.value || localISODate();
     const list = await apiGetDutySwapInbox(dateStr);
     renderSwapInbox(list);
+    await refreshRecentActivity();
   }
 
   async function onIndexInit() {
@@ -2713,8 +2898,14 @@
     }
     const selfFullName = $("#selfFullName");
     if (selfFullName) selfFullName.value = me.full_name || "";
+    try {
+      await loadUsefulResourcesFromApi();
+    } catch (e) {
+      showMsg($("#resourcesGrid"), e.message || String(e), "error");
+    }
     renderUsefulResources();
     initResourcesPageHandlers();
+    initAdminResourcesEditor();
     $("#resourcesSearchInput")?.addEventListener("input", () => {
       state.resourceGridFilter = "all";
       renderUsefulResources();
@@ -2730,11 +2921,13 @@
     const syncAdminDutyToggle = () => {
       const select = $("#adminUserSelect");
       const toggle = $("#adminDutyActiveToggle");
+      const morningToggle = $("#adminMorningDutyToggle");
       const hint = $("#adminDutyLeaveHint");
       if (!select || !toggle) return;
       const userId = Number(select.value);
       const target = state.employees.find((u) => Number(u.id) === userId);
       const leaveToday = dutyLeaveIncludesToday(target);
+      const isActive = target ? target.is_active_for_duties !== false && !leaveToday : true;
       if (hint) {
         const arr = Array.isArray(target?.duty_leave_dates) ? target.duty_leave_dates : [];
         if (arr.length) {
@@ -2749,9 +2942,25 @@
           hint.textContent = "";
         }
       }
-      toggle.checked = target ? target.is_active_for_duties !== false && !leaveToday : true;
+      toggle.checked = isActive;
       toggle.disabled = Boolean(target && leaveToday);
+      if (morningToggle) {
+        morningToggle.checked = isActive && target?.is_eligible_for_morning_duties !== false;
+        morningToggle.disabled = !isActive || Boolean(target && leaveToday);
+      }
     };
+
+    $("#adminDutyActiveToggle")?.addEventListener("change", () => {
+      const morningToggle = $("#adminMorningDutyToggle");
+      const activeToggle = $("#adminDutyActiveToggle");
+      if (!morningToggle || !activeToggle) return;
+      if (!activeToggle.checked) {
+        morningToggle.checked = false;
+        morningToggle.disabled = true;
+      } else {
+        morningToggle.disabled = activeToggle.disabled;
+      }
+    });
 
     setAdminMode(state.hasAdminAccess);
     syncDutyFilterOptions();
@@ -3058,6 +3267,12 @@
       try {
         showMsg(msg, "Отправляем запрос в Битрикс…", "info");
         await apiMeNotifyDutyReplacementBitrix();
+        pushLocalActivity({
+          id: `replacement-${Date.now()}`,
+          kind: "replacement",
+          title: "Запрос замены отправлен",
+          detail: "Администраторы уведомлены в личку Битрикс",
+        });
         showMsg(msg, "Уведомление отправлено администраторам в личку Битрикс.", "success");
       } catch (e) {
         showMsg(msg, e.message || String(e), "error");
@@ -3538,14 +3753,15 @@
           );
         }
         const isActive = Boolean(toggle?.checked);
+        const morningToggle = $("#adminMorningDutyToggle");
+        const isMorningEligible = isActive && Boolean(morningToggle?.checked);
         if (!userId) throw new Error("Выберите сотрудника.");
-        const updated = await apiAdminUpdateDutyStatus(userId, isActive);
+        const updated = await apiAdminUpdateDutyStatus(userId, isActive, isMorningEligible);
         const idx = state.employees.findIndex((u) => Number(u.id) === Number(updated.id));
         if (idx >= 0) state.employees[idx] = updated;
         replaceAdminUserEditorRow(updated);
         refreshPrivilegedSelectors();
         if (state.isRootAdmin) $("#adminUserSelect").value = String(updated.id);
-        $("#adminDutyActiveToggle").checked = updated.is_active_for_duties !== false;
         syncAdminDutyToggle();
         showMsg(msg, "Статус дежурств обновлен.", "success");
       } catch (e) {
@@ -3737,6 +3953,7 @@
       if (reportsDateStr) await loadReports(reportsDateStr, employeeId);
       await refreshSwapSlotSelects();
       await refreshSwapInbox();
+      await refreshRecentActivity();
       refreshDutyLeaveSettingsSummary();
       updateCurrentDutyNow();
     } catch (e) {
@@ -3747,12 +3964,15 @@
     if (state.swapInboxTimerId) clearInterval(state.swapInboxTimerId);
     state.swapInboxTimerId = setInterval(() => {
       refreshSwapInbox().catch(() => {});
+      refreshRecentActivity().catch(() => {});
     }, 30_000);
     if (state.currentDutyTimerId) clearInterval(state.currentDutyTimerId);
     state.currentDutyTimerId = setInterval(() => {
       updateCurrentDutyNow();
       updateDashboardClock();
+      apiTouchPresence().catch(() => {});
     }, 30_000);
+    apiTouchPresence().catch(() => {});
     updateDashboardClock();
   }
 

@@ -26,6 +26,7 @@ class AdminChangePasswordRequest(BaseModel):
 
 class AdminDutyStatusRequest(BaseModel):
     is_active_for_duties: bool
+    is_eligible_for_morning_duties: Optional[bool] = None
 
 
 class AdminBitrixUserIdRequest(BaseModel):
@@ -94,10 +95,11 @@ class UserOut(BaseModel):
     full_name: str
     role: str
     is_active_for_duties: bool = True
+    is_eligible_for_morning_duties: bool = True
     is_bootstrap_admin: bool = False
     bitrix_user_id: Optional[int] = None
     permissions: UserPermissionsOut = Field(default_factory=UserPermissionsOut)
-    last_login_at: Optional[datetime] = None
+    last_seen_at: Optional[datetime] = None
     duty_leave_dates: list[date] = Field(default_factory=list)
 
 
@@ -364,3 +366,28 @@ class DutyScheduleBitrixDispatchOut(BaseModel):
 class DutyReplacementBitrixNotifyOut(BaseModel):
     sent: bool
     recipients_bitrix: int
+
+
+class UsefulResourceOut(BaseModel):
+    id: int
+    slug: str
+    title: str
+    description: str
+    url: str
+    image: str
+    color: str
+    categories: list[str]
+    sort_order: int
+
+
+class UsefulResourceCategoriesUpdate(BaseModel):
+    categories: list[str] = Field(min_length=1)
+
+
+class RecentActivityItemOut(BaseModel):
+    id: str
+    kind: str
+    title: str
+    detail: str
+    at: datetime
+    status: str | None = None

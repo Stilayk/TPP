@@ -37,6 +37,7 @@ def _user_out(u: User, duty_leave_dates: list | None = None) -> UserOut:
         full_name=u.full_name,
         role=u.role,
         is_active_for_duties=bool(u.is_active_for_duties),
+        is_eligible_for_morning_duties=bool(u.is_eligible_for_morning_duties),
         is_bootstrap_admin=is_bootstrap_admin_account(u),
         bitrix_user_id=u.bitrix_user_id,
         permissions=UserPermissionsOut(
@@ -44,7 +45,7 @@ def _user_out(u: User, duty_leave_dates: list | None = None) -> UserOut:
             can_manage_reports=bool(u.can_manage_reports),
             can_manage_notifications=bool(u.can_manage_notifications),
         ),
-        last_login_at=u.last_login_at,
+        last_seen_at=u.last_seen_at,
         duty_leave_dates=list(duty_leave_dates or []),
     )
 
@@ -180,7 +181,16 @@ def admin_update_user_duty_status(
     db=Depends(get_db),
 ) -> UserOut:
     user = ensure_support_or_admin_user(db, user_id)
+    if payload.is_eligible_for_morning_duties and not payload.is_active_for_duties:
+        raise HTTPException(
+            status_code=400,
+            detail="Нельзя включить утренние дежурства без участия в генерации графика.",
+        )
     user.is_active_for_duties = payload.is_active_for_duties
+    if not payload.is_active_for_duties:
+        user.is_eligible_for_morning_duties = False
+    elif payload.is_eligible_for_morning_duties is not None:
+        user.is_eligible_for_morning_duties = payload.is_eligible_for_morning_duties
     db.add(user)
     db.commit()
     db.refresh(user)

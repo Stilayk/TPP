@@ -5,6 +5,7 @@ from fastapi import FastAPI
 
 def register_routers(app: FastAPI) -> None:
     from app.routers import (
+        activity,
         admin_users,
         auth,
         duties_live as duties,
@@ -14,6 +15,7 @@ def register_routers(app: FastAPI) -> None:
         instruction,
         me_duty_leave,
         reports,
+        useful_resources,
     )
 
     app.include_router(auth.router)
@@ -24,5 +26,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(duty_notify_dispatch.router)
     app.include_router(duties.router)
     app.include_router(duty_swaps.router)
+    app.include_router(activity.router)
     app.include_router(reports.router)
     app.include_router(exports_routes.router)
+    app.include_router(useful_resources.router)

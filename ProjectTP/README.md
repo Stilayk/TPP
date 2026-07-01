@@ -17,7 +17,10 @@ docker compose up -d --build
 
 ## Документация
 
+- [docs/site-guide.md](docs/site-guide.md) — **инструкция по сайту** для сотрудников и администраторов (график, отчёты, ресурсы, админка).
+- [../ТЗ-по-проекту.md](../ТЗ-по-проекту.md) — **техническое задание** (фактическое состояние продукта).
 - [docs/roadmap.md](docs/roadmap.md) — **дорожная карта** продукта и открытые направления.
+- [deployment_and_tz_request.md](deployment_and_tz_request.md) — быстрый деплой и шаблон запроса ТЗ на доработки.
 - [docs/deploy-rocky-linux.md](docs/deploy-rocky-linux.md) — **целевой стек Docker**, запуск, обновление без потери БД, бэкап, перенос на другой хост, Rocky Linux, firewalld.
 - [docs/notifications-inventory.md](docs/notifications-inventory.md) — **уведомления** (n8n, UI, Битрикс **№22** — выполнено).
 

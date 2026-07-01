@@ -16,7 +16,7 @@
 - Смену статуса задачи и следующего шага фиксировать в **Лог шагов** (и при необходимости в `TASKS.md`); блоки **Текущий статус задачи** и **Следующий шаг** не переписывать без договорённости с пользователем (см. `CONTINUE_PROMPT.md`). Строку **ACTIVE** в блоке ниже **можно** обновлять при смене фокуса.
 
 ## Якорь ACTIVE
-- **ACTIVE:** выполнена **№76** (2026-05-18): избранное и «Недавно открывали» на «Полезных ресурсах» через localStorage.
+- **ACTIVE:** независимая генерация утренних/обычных дежурств — реализовано; миграция `a1b2c3d4e5f6`; см. шаг 179.
 
 ## Роли субагентов
 - `orchestrator`: декомпозирует работу, назначает следующего исполнителя, снимает блокеры.
@@ -1357,4 +1357,50 @@
 - **Результат:** избранное и недавние сохраняются в браузере без API; `node --check ProjectTP/frontend/app.js` пройден.
 - **Артефакт:** `ProjectTP/frontend/app.js`, `ProjectTP/frontend/index.html`, `ProjectTP/frontend/login.html`, `ProjectTP/frontend/styles.css`, `TASKS.md`, `HANDOFF.md`
 - **Статус:** success
+
+### Шаг 175
+- **Задача:** Добавить полезный ресурс «База знаний IT (DokuWiki)».
+- **Время:** 2026-05-21 (сессия диалога)
+- **Кто исполнил:** backend (агент)
+- **Как исполнил:** карточка в `useful_resources_seed.py` (slug `dokuwiki-it-kb`, категория `services`, sort 115); логотип `ProjectTP/frontend/resource-images/dokuwiki-kb.png`; миграция `z5a6b7c8d9e0_dokuwiki_it_kb_resource.py` для существующих БД.
+- **Результат:** после `alembic upgrade head` карточка появляется на вкладке «Полезные ресурсы» с ссылкой на DokuWiki.
+- **Артефакт:** `ProjectTP/backend/app/useful_resources_seed.py`, `ProjectTP/backend/alembic/versions/z5a6b7c8d9e0_dokuwiki_it_kb_resource.py`, `ProjectTP/frontend/resource-images/dokuwiki-kb.png`, `HANDOFF.md`
+- **Статус:** success
+
+### Шаг 176
+- **Задача:** Сделать рабочую ленту «Недавняя активность» на вкладке «График».
+- **Время:** 2026-05-21 (сессия диалога)
+- **Кто исполнил:** backend + frontend (агент)
+- **Как исполнил:** `GET /api/activity/recent` — последние обмены дежурствами (входящие/исходящие, статусы); фронт объединяет с событием загрузки графика и локальным «Запрос замены»; обновление при загрузке графика, обменах и каждые 30 с; тест `test_activity_recent.py`.
+- **Результат:** блок показывает реальные события вместо статичных подсказок.
+- **Артефакт:** `ProjectTP/backend/app/routers/activity.py`, `ProjectTP/backend/app/schemas.py`, `ProjectTP/backend/tests/test_activity_recent.py`, `ProjectTP/frontend/app.js`, `ProjectTP/frontend/index.html`, `ProjectTP/frontend/styles.css`, `HANDOFF.md`
+- **Статус:** success
+
+### Шаг 177
+- **Задача:** Ручное назначение дежурств — без лимита 2 слота на человека в день.
+- **Время:** 2026-05-21 (сессия диалога)
+- **Кто исполнил:** backend (агент)
+- **Как исполнил:** убрана проверка `MAX_DUTIES_PER_DAY` из `POST /api/duties/batch` и `POST /api/duties/copy-range`; лимит остаётся только в `duty_generation.py` для автогенерации; обновлён `duty_generation_fairness.md`.
+- **Результат:** администратор может вручную поставить одного сотрудника на 3+ слота в день; автогенерация по-прежнему распределяет справедливо с лимитом 2.
+- **Артефакт:** `ProjectTP/backend/app/routers/duties_live.py`, `ProjectTP/duty_generation_fairness.md`, `HANDOFF.md`
+- **Статус:** success
+
+### Шаг 178
+- **Задача:** Добавить полезный ресурс MobiControl (управление Apple Mac).
+- **Время:** 2026-06-08 (сессия диалога)
+- **Кто исполнил:** backend (агент)
+- **Как исполнил:** карточка в `useful_resources_seed.py` (slug `mobicontrol`, категория `admin`, sort 120); логотип `ProjectTP/frontend/resource-images/mobicontrol.png`; миграция `b2c3d4e5f6a7_mobicontrol_resource.py`.
+- **Результат:** после `alembic upgrade head` карточка появляется на вкладке «Полезные ресурсы».
+- **Артефакт:** `ProjectTP/backend/app/useful_resources_seed.py`, `ProjectTP/backend/alembic/versions/b2c3d4e5f6a7_mobicontrol_resource.py`, `ProjectTP/frontend/resource-images/mobicontrol.png`, `HANDOFF.md`
+- **Статус:** success
+
+### Шаг 179
+- **Задача:** Независимая генерация утренних (07:00–08:00) и обычных (09:00–17:00) дежурств по ТЗ (одна кнопка, раздельные лимиты и пулы).
+- **Время:** 2026-06-08 (сессия диалога)
+- **Кто исполнил:** backend + frontend (агент)
+- **Как исполнил:** поле `User.is_eligible_for_morning_duties` + миграция `a1b2c3d4e5f6_user_morning_duty_eligibility.py` (для существующих строк = `is_active_for_duties`); рефакторинг `duty_generation.py` — `morning_day_counts` / `regular_day_counts`, лимиты 2+2, пул утра только с флагом утренних, раздельные глобальные счётчики справедливости; `PATCH /api/admin/users/{id}/duty-status` принимает `is_eligible_for_morning_duties` (опционально, обратная совместимость); чекбокс в админке «Утренние дежурства»; обновлены `duty_generation_fairness.md`, `check_generation_constraints.py`, `test_duty_generation.py`; в `reports.py` — импорт `MORNING_SLOT_INDEXES` из `duty_slots.py` (логика аналитики без изменений).
+- **Результат:** утренний дежурный может получить дневные слоты (напр. 2 утро + 1–2 день); на 07/08 при автогенерации — только сотрудники с флагом; ручное сохранение графика без лимитов (как шаг 177); макет графика не менялся.
+- **Артефакт:** `ProjectTP/backend/app/models.py`, `ProjectTP/backend/alembic/versions/a1b2c3d4e5f6_user_morning_duty_eligibility.py`, `ProjectTP/backend/app/duty_slots.py`, `ProjectTP/backend/app/duty_generation.py`, `ProjectTP/backend/app/schemas.py`, `ProjectTP/backend/app/routers/admin_users.py`, `ProjectTP/backend/app/routers/auth.py`, `ProjectTP/backend/app/routers/duties_live.py`, `ProjectTP/backend/app/services.py`, `ProjectTP/backend/app/routers/reports.py`, `ProjectTP/frontend/index.html`, `ProjectTP/frontend/app.js`, `ProjectTP/backend/tests/test_duty_generation.py`, `ProjectTP/backend/tests/test_reports_recent.py`, `ProjectTP/check_generation_constraints.py`, `ProjectTP/duty_generation_fairness.md`, `ProjectTP/docs/roadmap.md`, `HANDOFF.md`
+- **Статус:** success
+- **Следующий шаг:** на стенде выполнить `alembic upgrade head`; в админке настроить список утренних дежурных; прогнать `check_generation_constraints.py`.
 

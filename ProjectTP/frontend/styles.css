@@ -646,9 +646,12 @@ textarea {
 
 #adminUsersEditorTable.admin-users-editor-table .admin-users-th-last,
 #adminUsersEditorTable.admin-users-editor-table .admin-users-col-lastlogin {
-  width: 8.5rem;
-  max-width: 8.5rem;
-  white-space: nowrap;
+  width: 12%;
+  min-width: 11.25rem;
+  max-width: none;
+  white-space: normal;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
   font-size: 0.8125rem;
   color: var(--color-on-surface-variant);
 }
@@ -2653,6 +2656,32 @@ body {
   border-radius: 50%;
   background: #eef5ff;
   border: 6px solid #dbeafe;
+  flex-shrink: 0;
+}
+
+.activity-dot--pending {
+  background: #fffbeb;
+  border-color: #fcd34d;
+}
+
+.activity-dot--ok {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+}
+
+.activity-dot--muted {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.activity-dot--info {
+  background: #eef5ff;
+  border-color: #93c5fd;
+}
+
+.activity-time {
+  margin-top: 4px;
+  font-size: 0.8125rem;
 }
 
 @media (max-width: 1180px) {
@@ -2841,4 +2870,33 @@ body {
 
 .duty-leave-early-row {
   margin-top: 0.75rem;
+}
+
+.admin-resources-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-resources-table th,
+.admin-resources-table td {
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
+  vertical-align: middle;
+}
+
+.admin-resources-table th[scope="row"] {
+  text-align: left;
+  font-weight: 600;
+  min-width: 10rem;
+}
+
+.admin-resources-check {
+  text-align: center;
+  width: 5.5rem;
+}
+
+.admin-resources-check label {
+  display: inline-flex;
+  justify-content: center;
+  cursor: pointer;
 }

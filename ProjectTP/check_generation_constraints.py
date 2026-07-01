@@ -1,5 +1,6 @@
 """
-Happy-path: генерация с overwrite; слот 09:00 → логин user, макс. 2 дежурства/день на человека,
+Happy-path: генерация с overwrite; слот 09:00 → логин user, макс. 2 утренних и макс. 2 обычных
+слотов на человека в день (независимо), утро — только is_eligible_for_morning_duties;
 bootstrap-админ (TPP_BOOTSTRAP_ADMIN, по умолчанию как TPP_ADMIN_USER) не в графике от генерации.
 """
 import json
@@ -82,17 +83,31 @@ def main():
             continue
         _, duties = call(opener, f"/api/duties?date={d.isoformat()}", "GET")
         slots = duties.get("slots") or []
-        per_user: dict[int, int] = defaultdict(int)
+        per_user_morning: dict[int, int] = defaultdict(int)
+        per_user_regular: dict[int, int] = defaultdict(int)
+        morning_times = {"07:00", "08:00"}
         for s in slots:
             u = s.get("user")
+            start = s.get("start_time")
             if u and u.get("id") is not None:
-                per_user[int(u["id"])] += 1
-            if s.get("start_time") == "09:00":
+                uid = int(u["id"])
+                if start in morning_times:
+                    per_user_morning[uid] += 1
+                    if u.get("is_eligible_for_morning_duties") is False:
+                        raise SystemExit(
+                            f"Morning slot on {d} assigned to user_id={uid} without morning eligibility"
+                        )
+                else:
+                    per_user_regular[uid] += 1
+            if start == "09:00":
                 if not u or u.get("username") != "user":
                     raise SystemExit(f"09:00 on {d} must be login 'user', got {u}")
-        for uid, n in per_user.items():
+        for uid, n in per_user_morning.items():
             if n > 2:
-                raise SystemExit(f"More than 2 duties same day user_id={uid} date={d}")
+                raise SystemExit(f"More than 2 morning duties same day user_id={uid} date={d}")
+        for uid, n in per_user_regular.items():
+            if n > 2:
+                raise SystemExit(f"More than 2 regular duties same day user_id={uid} date={d}")
         if bootstrap_id is not None and per_user.get(bootstrap_id, 0) != 0:
             raise SystemExit(f"Bootstrap admin id={bootstrap_id} should not be in generated schedule on {d}")
         d += timedelta(days=1)

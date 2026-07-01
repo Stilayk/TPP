@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.database import get_db
 from app.deps import ensure_support_or_admin_user, get_current_user, user_has_capability
-from app.duty_slots import SLOT_COUNT, SLOT_START_HOUR
+from app.duty_slots import MORNING_SLOT_INDEXES, SLOT_COUNT
 from app.models import DailyReport, DutyAssignment, DutySwapRequest, ReportEntry, User
 from app.schemas import (
     CreateOrGetReportRequest,
@@ -48,6 +48,7 @@ def _report_history_item(db, report: DailyReport) -> ReportHistoryItemOut:
             full_name=employee.full_name,
             role=employee.role,
             is_active_for_duties=bool(employee.is_active_for_duties),
+            is_eligible_for_morning_duties=bool(employee.is_eligible_for_morning_duties),
             is_bootstrap_admin=False,
             bitrix_user_id=employee.bitrix_user_id,
         ),
@@ -69,9 +70,6 @@ def _year_months_inclusive(start_date: date, end_date: date) -> list[str]:
         else:
             m += 1
     return out
-
-
-MORNING_SLOT_INDEXES = (7 - SLOT_START_HOUR, 8 - SLOT_START_HOUR)
 
 
 def _analytics_employee_slots(db, start_date: date, end_date: date, morning: bool) -> list[DutyAnalyticsEmployeeRowOut]:

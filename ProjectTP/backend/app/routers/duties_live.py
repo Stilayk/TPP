@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import random
-from collections import defaultdict
 from datetime import date, datetime, timedelta
 from typing import Optional
 
@@ -17,7 +16,7 @@ from app.database import db_session, get_db
 from app.deps import require_admin, require_capability, require_capability_any, require_support_or_admin
 from app.duty_copy import slot_updates_for_copy
 from app.duty_export import build_duties_period_excel_bytes
-from app.duty_generation import MAX_DUTIES_PER_DAY, run_generation
+from app.duty_generation import run_generation
 from app.duty_notifications import (
     apply_notification_settings,
     apply_notification_templates,
@@ -54,21 +53,6 @@ router = APIRouter()
 _MAX_DUTY_EXPORT_DAYS = 120
 
 
-def _merged_duty_slot_counts(tx_db, day: date, updates: list[tuple[int, int | None]]) -> dict[int, int]:
-    """Число слотов на человека за день после применения updates (slot -> user_id или None = очистить)."""
-    update_by_slot = {slot: uid for slot, uid in updates}
-    counts: dict[int, int] = defaultdict(int)
-    rows = tx_db.execute(select(DutyAssignment).where(DutyAssignment.date == day)).scalars().all()
-    for r in rows:
-        if r.slot in update_by_slot:
-            continue
-        counts[int(r.support_user_id)] += 1
-    for _slot, uid in updates:
-        if uid is not None:
-            counts[int(uid)] += 1
-    return dict(counts)
-
-
 @router.get("/api/duties", response_model=DutiesOut)
 def get_duties(
     date_: date = Query(..., alias="date"),
@@ -95,6 +79,7 @@ def get_duties(
                     full_name=user.full_name,
                     role=user.role,
                     is_active_for_duties=bool(user.is_active_for_duties),
+                    is_eligible_for_morning_duties=bool(user.is_eligible_for_morning_duties),
                     bitrix_user_id=None,
                 )
                 if user
@@ -186,23 +171,10 @@ def duties_batch(
     user_ids = [a.user_id for a in payload.assignments if a.user_id is not None]
     _assert_assignees_for_duty_day(db, sorted(set(user_ids)))
 
-    updates = [(a.slot, a.user_id) for a in payload.assignments]
-
     created = 0
     updated = 0
     deleted = 0
     with db_session() as tx_db:
-        merged = _merged_duty_slot_counts(tx_db, payload.date, updates)
-        bad = [uid for uid, c in merged.items() if c > MAX_DUTIES_PER_DAY]
-        if bad:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    f"A user cannot have more than {MAX_DUTIES_PER_DAY} duty slots on the same day "
-                    f"(user_ids={bad})"
-                ),
-            )
-
         for a in payload.assignments:
             existing = tx_db.execute(
                 select(DutyAssignment).where(DutyAssignment.date == payload.date, DutyAssignment.slot == a.slot)
@@ -281,17 +253,6 @@ def duties_copy_range(
 
             day_uids = sorted({uid for _, uid in updates if uid is not None})
             _assert_assignees_for_duty_day(tx_db, day_uids)
-
-            merged = _merged_duty_slot_counts(tx_db, tgt_d, updates)
-            bad = [uid for uid, c in merged.items() if c > MAX_DUTIES_PER_DAY]
-            if bad:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        f"A user cannot have more than {MAX_DUTIES_PER_DAY} duty slots on the same day "
-                        f"(date={tgt_d.isoformat()}, user_ids={bad})"
-                    ),
-                )
 
             for slot, uid in updates:
                 existing = tx_db.execute(

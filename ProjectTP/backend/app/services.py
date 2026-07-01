@@ -209,6 +209,7 @@ def report_to_out(db, report: DailyReport) -> DailyReportOut:
             full_name=employee.full_name,
             role=employee.role,
             is_active_for_duties=bool(employee.is_active_for_duties),
+            is_eligible_for_morning_duties=bool(employee.is_eligible_for_morning_duties),
             is_bootstrap_admin=False,
             bitrix_user_id=None,
         ),

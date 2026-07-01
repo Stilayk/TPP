@@ -3,8 +3,6 @@ from __future__ import annotations
 import time
 from threading import Lock
 
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select, text
 
@@ -21,6 +19,7 @@ from app.schemas import (
     UserPermissionsOut,
 )
 from app.security import hash_password, verify_password
+from app.user_presence import touch_user_last_seen
 
 router = APIRouter()
 
@@ -38,6 +37,7 @@ def _user_me_out(db, user: User) -> UserMeOut:
         full_name=user.full_name,
         role=user.role,
         is_active_for_duties=bool(user.is_active_for_duties),
+        is_eligible_for_morning_duties=bool(user.is_eligible_for_morning_duties),
         is_bootstrap_admin=is_bootstrap_admin_account(user),
         bitrix_user_id=user.bitrix_user_id,
         permissions=UserPermissionsOut(
@@ -45,7 +45,7 @@ def _user_me_out(db, user: User) -> UserMeOut:
             can_manage_reports=bool(user.can_manage_reports),
             can_manage_notifications=bool(user.can_manage_notifications),
         ),
-        last_login_at=user.last_login_at,
+        last_seen_at=user.last_seen_at,
         duty_leave_dates=leaves,
     )
 
@@ -110,9 +110,7 @@ def login(payload: LoginRequest, request: Request, db=Depends(get_db)) -> UserMe
 
     login_clear_failures(request, payload.username)
     request.session["user_id"] = str(user.id)
-    user.last_login_at = datetime.utcnow()
-    db.add(user)
-    db.commit()
+    touch_user_last_seen(db, user.id, force=True)
     db.refresh(user)
     return _user_me_out(db, user)
 
@@ -125,7 +123,16 @@ def logout(request: Request) -> LogoutOut:
 
 @router.get("/api/me", response_model=UserMeOut)
 def me(current_user: User = Depends(get_current_user), db=Depends(get_db)) -> UserMeOut:
+    touch_user_last_seen(db, current_user.id)
+    db.refresh(current_user)
     return _user_me_out(db, current_user)
+
+
+@router.post("/api/me/presence")
+def touch_presence(current_user: User = Depends(get_current_user), db=Depends(get_db)) -> dict:
+    """Пинг активности (вкладка открыта); обновление не чаще раза в 5 минут."""
+    touch_user_last_seen(db, current_user.id)
+    return {"ok": True}
 
 
 @router.post("/api/me/password")
